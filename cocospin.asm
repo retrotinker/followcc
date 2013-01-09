@@ -132,10 +132,10 @@ CLSLOOP	sta	,x+
 *
 SPNREAD	clrb
 
-	lda	#$35		Read the right/left axis of the left joystick
-	sta	PIA0C0
-	lda	#$3c
+	lda	#$3c		Read the right/left axis of the left joystick
 	sta	PIA0C1
+	lda	#$35
+	sta	PIA0C0
 
 SPNRDP1	lda	#$7c		Test for low value on axis
 	sta	PIA1D0
