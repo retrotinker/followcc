@@ -49,6 +49,7 @@ EXEC	equ	*
 	bsr	CLRSCN
 
 	clr	SPNSTAT
+	clr	SPNLAST
 
 	lda	$ff03	Disable vsync interrupt generation
 	anda	#$fe
@@ -61,6 +62,12 @@ EXEC	equ	*
 
 LOOP	tst	$ff00
 	sync
+	tst	$ff00
+	sync
+	tst	$ff00
+	sync
+	tst	$ff00
+	sync
 
 	lda	PIA0D0
 	bita	#$02
@@ -69,6 +76,17 @@ LOOP	tst	$ff00
 	bsr	CLRSCN
 
 LOOPRD	bsr	SPNREAD
+
+	cmpb	SPNLAST
+	beq	LOOPTST
+
+	stb	SPNLAST
+	ldb	#$02
+	stb	SPNLCNT
+	bra	LOOPEX
+
+LOOPTST	dec	SPNLCNT
+	bne	LOOPEX
 
 	cmpb	SPNSTAT
 	beq	LOOPEX
@@ -146,5 +164,7 @@ SPNRDEX	clr	PIA1D0
 	rts
 
 SPNSTAT	rmb	1
+SPNLAST	rmb	1
+SPNLCNT	rmb	1
 
 	end	EXEC
