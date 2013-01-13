@@ -46,10 +46,9 @@ EXEC	equ	*
 * Disable IRQ and FIRQ
 	orcc	#$50
 
-	bsr	CLRSCN
+	lbsr	CLRSCN
 
 	clr	SPNSTAT
-	dec	SPNSTAT		Guarantee initial "transition"
 
 	clr	SPNHIST
 	clr	SPNHIST+1
@@ -77,12 +76,12 @@ LOOP	tst	$ff00		Synchronize to sample frequency
 	bita	#$02
 	bne	LOOPRD
 
-	bsr	CLRSCN		...and clear screen if pressed
+	lbsr	CLRSCN		...and clear screen if pressed
 
 LOOPRD	ldd	SPNHIST		Shift historical spinner data
 	std	SPNHIST+1
 
-	bsr	SPNREAD		Read current spinner values
+	lbsr	SPNREAD		Read current spinner values
 	stb	SPNHIST
 	tfr	b,a
 
@@ -97,11 +96,34 @@ LOOPRD	ldd	SPNHIST		Shift historical spinner data
 	orb	,s		Combine the debounce algorithm components
 	leas	1,s
 
-	cmpb	SPNSTAT		If no change, restart the loop...
-	beq	LOOPEX
+	lda	SPNSTAT		Read old spinner status
+	stb	SPNSTAT		Save new spinner status
 
-	stb	SPNSTAT		Record new spinner status on the SG4 screen
-	lslb
+	lsla			Prepare vector by combining old and new status
+	lsla
+	ora	SPNSTAT
+	lsla
+	ldy	#LOOPCHK
+	jmp	a,y		Choose proper action for current state
+
+LOOPCHK	bra	LOOPEX		00 -> 00 : No change, restart loop
+	bra	LOOPREC		00 -> 01 : Record state change
+	bra	LOOPREC		00 -> 10 : Record state change
+	bra	LOOPBAD		00 -> 11 : Invalid state change!
+	bra	LOOPREC		01 -> 00 : Record state change
+	bra	LOOPEX		01 -> 01 : No change, restart loop
+	bra	LOOPBAD		01 -> 10 : Invalid state change!
+	bra	LOOPREC		01 -> 11 : Record state change
+	bra	LOOPREC		10 -> 00 : Record state change
+	bra	LOOPBAD		10 -> 01 : Invalid state change!
+	bra	LOOPEX		10 -> 10 : No change, restart loop
+	bra	LOOPREC		10 -> 11 : Record state change
+	bra	LOOPBAD		11 -> 00 : Invalid state change!
+	bra	LOOPREC		11 -> 01 : Record state change
+	bra	LOOPREC		11 -> 10 : Record state change
+	bra	LOOPEX		11 -> 11 : No change, restart loop
+
+LOOPREC	lslb			Record new spinner status on the SG4 screen
 	lslb
 	lslb
 	lslb
@@ -113,14 +135,25 @@ LOOPRD	ldd	SPNHIST		Shift historical spinner data
 
 	ldx	#VIDBASE	Wrap the screen output to the top, as necessary
 
-LOOPEX	equ	*
+LOOPEX	bra	CHKUART
+
+LOOPBAD	ldb	#$80
+	stb	,x+
+
+	cmpx	#(VIDBASE+VIDSIZE)
+	blt	LOOPEX
+
+	ldx	#VIDBASE	Wrap the screen output to the top, as necessary
+
+	bra	LOOPEX
 
 * Check for user break (development only)
 CHKUART	lda	$ff69		Check for serial port activity
 	bita	#$08
-	beq	LOOP
+	lbeq	LOOP
 	lda	$ff68
 
+*EXIT	jmp	$c135		Re-enter monitor (works on CoCo3?)
 EXIT	jmp	[$fffe]		Re-enter monitor
 
 *
