@@ -80,9 +80,20 @@ LOOP	tst	$ff00		Synchronize to sample frequency
 
 	lda	PIA0D0		Test the joystick button...
 	bita	#$02
-	bne	LOOPRD
+	beq	LOOPBTN
 
-	lbsr	CLRSCN		...and clear screen if pressed
+	lda	#$80		If not pressed, clear the block...
+	sta	(VIDBASE+VIDSIZE/2-17)
+	sta	(VIDBASE+VIDSIZE/2-16)
+	sta	(VIDBASE+VIDSIZE/2+15)
+	sta	(VIDBASE+VIDSIZE/2+16)
+	bra	LOOPRD
+
+LOOPBTN	lda	#$bf		Light a block if pressed...
+	sta	(VIDBASE+VIDSIZE/2-17)
+	sta	(VIDBASE+VIDSIZE/2-16)
+	sta	(VIDBASE+VIDSIZE/2+15)
+	sta	(VIDBASE+VIDSIZE/2+16)
 
 LOOPRD	ldd	SPNHIST		Shift historical spinner data
 	std	SPNHIST+1
