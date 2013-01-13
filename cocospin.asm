@@ -63,9 +63,8 @@ EXEC	equ	*
 	ora	#$01
 	sta	$ff01
 
-	ldx	#(VIDBASE+VIDSIZE/2-16)
-	lda	#$bf
-	sta	,x		Initialize cursor position
+	lda	#$bf		Display cursor at initial position
+	sta	,x
 
 	lbsr	SPNREAD		Read current spinner values
 	stb	SPNSTAT		Pre-load spinner state
@@ -130,31 +129,57 @@ LOOPCHK	bra	LOOPEX		00 -> 00 : No change, restart loop
 	bra	LMOV_CW		11 -> 10 : Record state change
 	bra	LOOPEX		11 -> 11 : No change, restart loop
 
-LMOV_CW	lda	#$80
-	sta	,x+
-	lda	#$bf
-	sta	,x
+LMOV_CW	cmpx	#(VIDBASE+31)
+	blt	LMOVRT
+	cmpx	#(VIDBASE+VIDSIZE-31)
+	bge	LMOVLT
+	tfr	x,d
+	andb	#$01f
+	beq	LMOVUP
+	bra	LMOVDN
 
-	cmpx	#(VIDBASE+VIDSIZE)
-	blt	LOOPEX
+LMOVCCW	cmpx    #(VIDBASE+VIDSIZE-1)
+	beq	LMOVUP
+	cmpx	#(VIDBASE+VIDSIZE-32)
+	bge	LMOVRT
+	cmpx	#VIDBASE
+	beq	LMOVDN
+	cmpx	#(VIDBASE+32)
+	blt	LMOVLT
+	tfr	x,d
+	andb	#$01f
+	beq	LMOVDN
+	bra	LMOVUP
 
-	* Wrap the screen output to the top, as necessary
-	ldx	#VIDBASE
-
-	bra	LOOPEX
-
-LMOVCCW	lda	#$80
+LMOVLT	lda	#$80
 	sta	,x
 	lda	#$bf
 	sta	,-x
 
-	cmpx	#VIDBASE
-	bge	LOOPEX
+	bra	LOOPEX
 
-	* Wrap the screen output to the bottom, as necessary
-	ldx	#(VIDBASE+VIDSIZE)
+LMOVRT	lda	#$80
+	sta	,x+
+	lda	#$bf
+	sta	,x
 
 	bra	LOOPEX
+
+LMOVUP	lda	#$80
+	sta	,x
+	leax	-32,x
+	lda	#$bf
+	sta	,x
+
+	bra	LOOPEX
+
+LMOVDN	lda	#$80
+	sta	,x
+	leax	32,x
+	lda	#$bf
+	sta	,x
+
+*	bra	LOOPEX
 
 LOOPEX	bra	CHKUART
 
