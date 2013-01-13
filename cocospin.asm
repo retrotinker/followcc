@@ -49,7 +49,11 @@ EXEC	equ	*
 	bsr	CLRSCN
 
 	clr	SPNSTAT
-	clr	SPNLAST
+	dec	SPNSTAT	Guarantee initial "transition"
+
+	clr	SPNHIST
+	clr	SPNHIST+1
+	clr	SPNHIST+2
 
 	lda	$ff03	Disable vsync interrupt generation
 	anda	#$fe
@@ -75,18 +79,23 @@ LOOP	tst	$ff00
 
 	bsr	CLRSCN
 
-LOOPRD	bsr	SPNREAD
+LOOPRD	ldd	SPNHIST
+	std	SPNHIST+1
 
-	cmpb	SPNLAST
-	beq	LOOPTST
+	bsr	SPNREAD
+	stb	SPNHIST
+	tfr	b,a
 
-	stb	SPNLAST
-	ldb	#$02
-	stb	SPNLCNT
-	bra	LOOPEX
+	anda	SPNHIST+1
+	anda	SPNHIST+2
+	pshs	a
 
-LOOPTST	dec	SPNLCNT
-	bne	LOOPEX
+	orb	SPNHIST+1
+	orb	SPNHIST+2
+	andb	SPNSTAT
+
+	orb	,s
+	leas	1,s
 
 	cmpb	SPNSTAT
 	beq	LOOPEX
@@ -164,7 +173,6 @@ SPNRDEX	clr	PIA1D0
 	rts
 
 SPNSTAT	rmb	1
-SPNLAST	rmb	1
-SPNLCNT	rmb	1
+SPNHIST	rmb	3
 
 	end	EXEC
