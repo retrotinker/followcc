@@ -63,6 +63,13 @@ EXEC	equ	*
 	ora	#$01
 	sta	$ff01
 
+	ldx	#(VIDBASE+VIDSIZE/2-16)
+	lda	#$bf
+	sta	,x		Initialize cursor position
+
+	lbsr	SPNREAD		Read current spinner values
+	stb	SPNSTAT		Pre-load spinner state
+
 LOOP	tst	$ff00		Synchronize to sample frequency
 	sync
 	tst	$ff00
@@ -107,33 +114,47 @@ LOOPRD	ldd	SPNHIST		Shift historical spinner data
 	jmp	a,y		Choose proper action for current state
 
 LOOPCHK	bra	LOOPEX		00 -> 00 : No change, restart loop
-	bra	LOOPREC		00 -> 01 : Record state change
-	bra	LOOPREC		00 -> 10 : Record state change
+	bra	LMOV_CW		00 -> 01 : Record state change
+	bra	LMOVCCW		00 -> 10 : Record state change
 	bra	LOOPBAD		00 -> 11 : Invalid state change!
-	bra	LOOPREC		01 -> 00 : Record state change
+	bra	LMOVCCW		01 -> 00 : Record state change
 	bra	LOOPEX		01 -> 01 : No change, restart loop
 	bra	LOOPBAD		01 -> 10 : Invalid state change!
-	bra	LOOPREC		01 -> 11 : Record state change
-	bra	LOOPREC		10 -> 00 : Record state change
+	bra	LMOV_CW		01 -> 11 : Record state change
+	bra	LMOV_CW		10 -> 00 : Record state change
 	bra	LOOPBAD		10 -> 01 : Invalid state change!
 	bra	LOOPEX		10 -> 10 : No change, restart loop
-	bra	LOOPREC		10 -> 11 : Record state change
+	bra	LMOVCCW		10 -> 11 : Record state change
 	bra	LOOPBAD		11 -> 00 : Invalid state change!
-	bra	LOOPREC		11 -> 01 : Record state change
-	bra	LOOPREC		11 -> 10 : Record state change
+	bra	LMOVCCW		11 -> 01 : Record state change
+	bra	LMOV_CW		11 -> 10 : Record state change
 	bra	LOOPEX		11 -> 11 : No change, restart loop
 
-LOOPREC	lslb			Record new spinner status on the SG4 screen
-	lslb
-	lslb
-	lslb
-	orb	#$8f
-	stb	,x+
+LMOV_CW	lda	#$80
+	sta	,x+
+	lda	#$bf
+	sta	,x
 
 	cmpx	#(VIDBASE+VIDSIZE)
 	blt	LOOPEX
 
-	ldx	#VIDBASE	Wrap the screen output to the top, as necessary
+	* Wrap the screen output to the top, as necessary
+	ldx	#VIDBASE
+
+	bra	LOOPEX
+
+LMOVCCW	lda	#$80
+	sta	,x
+	lda	#$bf
+	sta	,-x
+
+	cmpx	#VIDBASE
+	bge	LOOPEX
+
+	* Wrap the screen output to the bottom, as necessary
+	ldx	#(VIDBASE+VIDSIZE)
+
+	bra	LOOPEX
 
 LOOPEX	bra	CHKUART
 
