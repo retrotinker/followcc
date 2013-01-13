@@ -1,0 +1,9 @@
+# Vim and Emacs autosave/backup/swap files
+.*
+*.orig
+*~
+\#*#
+
+# Build products
+*.bin
+*.s19
