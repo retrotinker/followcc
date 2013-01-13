@@ -49,22 +49,22 @@ EXEC	equ	*
 	bsr	CLRSCN
 
 	clr	SPNSTAT
-	dec	SPNSTAT	Guarantee initial "transition"
+	dec	SPNSTAT		Guarantee initial "transition"
 
 	clr	SPNHIST
 	clr	SPNHIST+1
 	clr	SPNHIST+2
 
-	lda	$ff03	Disable vsync interrupt generation
+	lda	$ff03		Disable vsync interrupt generation
 	anda	#$fe
 	sta	$ff03
 	tst	$ff02
 
-	lda	$ff01	Enable hsync interrupt generation
+	lda	$ff01		Enable hsync interrupt generation
 	ora	#$01
 	sta	$ff01
 
-LOOP	tst	$ff00
+LOOP	tst	$ff00		Synchronize to sample frequency
 	sync
 	tst	$ff00
 	sync
@@ -73,34 +73,34 @@ LOOP	tst	$ff00
 	tst	$ff00
 	sync
 
-	lda	PIA0D0
+	lda	PIA0D0		Test the joystick button...
 	bita	#$02
 	bne	LOOPRD
 
-	bsr	CLRSCN
+	bsr	CLRSCN		...and clear screen if pressed
 
-LOOPRD	ldd	SPNHIST
+LOOPRD	ldd	SPNHIST		Shift historical spinner data
 	std	SPNHIST+1
 
-	bsr	SPNREAD
+	bsr	SPNREAD		Read current spinner values
 	stb	SPNHIST
 	tfr	b,a
 
-	anda	SPNHIST+1
+	anda	SPNHIST+1	Computer AND terms of debounce algorithm
 	anda	SPNHIST+2
 	pshs	a
 
-	orb	SPNHIST+1
+	orb	SPNHIST+1	Computer OR terms of debounce algorithm
 	orb	SPNHIST+2
-	andb	SPNSTAT
+	andb	SPNSTAT		AND the above w/ current reported value
 
-	orb	,s
+	orb	,s		Combine the debounce algorithm components
 	leas	1,s
 
-	cmpb	SPNSTAT
+	cmpb	SPNSTAT		If no change, restart the loop...
 	beq	LOOPEX
 
-	stb	SPNSTAT
+	stb	SPNSTAT		Record new spinner status on the SG4 screen
 	lslb
 	lslb
 	lslb
@@ -111,7 +111,7 @@ LOOPRD	ldd	SPNHIST
 	cmpx	#(VIDBASE+VIDSIZE)
 	blt	LOOPEX
 
-	ldx	#VIDBASE
+	ldx	#VIDBASE	Wrap the screen output to the top, as necessary
 
 LOOPEX	equ	*
 
@@ -123,7 +123,12 @@ CHKUART	lda	$ff69		Check for serial port activity
 
 EXIT	jmp	[$fffe]		Re-enter monitor
 
-* ...clear screen...
+*
+* Clear the screen
+*
+*	X gets set to #VIDBASE
+*	A gets clobbered
+*
 CLRSCN	ldx	#VIDBASE
 	lda	#$80
 CLSLOOP	sta	,x+
@@ -151,7 +156,7 @@ SPNRDP1	lda	#$7c		Test for low value on axis
 	lda	PIA0D0
 	bpl	SPNRDP2
 
-	orb	#SPINP1
+	orb	#SPINP1		Indicate "high" on phase 1 input
 
 SPNRDP2	lda	#$3d		Read the up/down axis of the left joystick
 	sta	PIA0C0
@@ -162,9 +167,9 @@ SPNRDP2	lda	#$3d		Read the up/down axis of the left joystick
 	lda	PIA0D0		Test value still set in PIA1D0
 	bpl	SPNRDEX
 
-	orb	#SPINP2
+	orb	#SPINP2		Indicate "high" on phase 2 input
 
-SPNRDEX	clr	PIA1D0
+SPNRDEX	clr	PIA1D0		Reset selector switch inputs
 	lda	#$35
 	sta	PIA0C0
 	lda	#$34
@@ -172,7 +177,7 @@ SPNRDEX	clr	PIA1D0
 
 	rts
 
-SPNSTAT	rmb	1
-SPNHIST	rmb	3
+SPNSTAT	rmb	1		Current spinner state value
+SPNHIST	rmb	3		Historical spinner readings
 
 	end	EXEC
