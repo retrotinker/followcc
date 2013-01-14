@@ -194,15 +194,7 @@ LMOVDN	lda	#$80
 
 LOOPEX	bra	CHKUART
 
-LOOPBAD	ldb	#$80
-	stb	,x+
-
-	cmpx	#(VIDBASE+VIDSIZE)
-	blt	LOOPEX
-
-	ldx	#VIDBASE	Wrap the screen output to the top, as necessary
-
-	bra	LOOPEX
+LOOPBAD	bra	LOOPEX		Ignore invalide state transitions
 
 * Check for user break (development only)
 CHKUART	lda	$ff69		Check for serial port activity
