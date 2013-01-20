@@ -56,8 +56,11 @@ EXEC	equ	*
 	clr	SPNHIST+1
 	clr	SPNHIST+2
 
-	bsr	SPNREAD		Read current spinner values
+	lbsr	SPNREAD		Read current spinner values
 	stb	SPNSTAT		Pre-load spinner state
+
+* Init other variables
+	clr	CURBOX
 
 * Init timing sources
 	lda	$ff03		Disable vsync interrupt generation
@@ -97,25 +100,99 @@ EXEC	equ	*
 	lda	3,y
 	lbsr	DRAWBOX
 
-* Outline a box in white
-	ldy	#BXOUTLN
-	ldx	2,y
-	lda	#WHITE
-	bsr	DRWOUTL
+* Draw initial selection outline
+	lbsr	SELECT
 
-* Outline a box in it's own color
-	ldy	#BXOUTLN
-	ldx	6,y
-	ldy	#BXCOLOR
-	lda	3,y
-	bsr	DRWOUTL
+LOOP	tst	$ff00		Synchronize to sample frequency
+	sync
+	tst	$ff00
+	sync
+	tst	$ff00
+	sync
+	tst	$ff00
+	sync
 
-LOOP	bra	CHKUART
+	lda	PIA0D0		Test the joystick button...
+	bita	#$02
+	beq	LOOPBTN
+
+	lbsr	SELECT
+	bra	LOOPRD
+
+LOOPBTN	lbsr	HILIGHT
+
+LOOPRD	ldd	SPNHIST		Shift historical spinner data
+	std	SPNHIST+1
+
+	bsr	SPNREAD		Read current spinner values
+	stb	SPNHIST
+	tfr	b,a
+
+	anda	SPNHIST+1	Computer AND terms of debounce algorithm
+	anda	SPNHIST+2
+	pshs	a
+
+	orb	SPNHIST+1	Computer OR terms of debounce algorithm
+	orb	SPNHIST+2
+	andb	SPNSTAT		AND the above w/ current reported value
+
+	orb	,s		Combine the debounce algorithm components
+	leas	1,s
+
+	lda	SPNSTAT		Read old spinner status
+	stb	SPNSTAT		Save new spinner status
+
+	lsla			Prepare vector by combining old and new status
+	lsla
+	ora	SPNSTAT
+	lsla
+	ldy	#LOOPCHK
+	jmp	a,y		Choose proper action for current state
+
+LOOPCHK	bra	LOOPEX		00 -> 00 : No change, restart loop
+	bra	LMOV_CW		00 -> 01 : Record state change
+	bra	LMOVCCW		00 -> 10 : Record state change
+	bra	LOOPBAD		00 -> 11 : Invalid state change!
+	bra	LMOVCCW		01 -> 00 : Record state change
+	bra	LOOPEX		01 -> 01 : No change, restart loop
+	bra	LOOPBAD		01 -> 10 : Invalid state change!
+	bra	LMOV_CW		01 -> 11 : Record state change
+	bra	LMOV_CW		10 -> 00 : Record state change
+	bra	LOOPBAD		10 -> 01 : Invalid state change!
+	bra	LOOPEX		10 -> 10 : No change, restart loop
+	bra	LMOVCCW		10 -> 11 : Record state change
+	bra	LOOPBAD		11 -> 00 : Invalid state change!
+	bra	LMOVCCW		11 -> 01 : Record state change
+	bra	LMOV_CW		11 -> 10 : Record state change
+	bra	LOOPEX		11 -> 11 : No change, restart loop
+
+LMOV_CW	bsr	DSELECT
+	lda	CURBOX
+	inca
+	anda	#$03
+	sta	CURBOX
+	bsr	SELECT
+
+	bra	LOOPEX
+
+LMOVCCW	bsr	DSELECT
+	lda	CURBOX
+	deca
+	anda	#$03
+	sta	CURBOX
+	bsr	SELECT
+	bra	LOOPEX
+
+*	bra	LOOPEX
+
+LOOPEX	bra	CHKUART
+
+LOOPBAD	bra	LOOPEX		Ignore invalide state transitions
 
 * Check for user break (development only)
 CHKUART	lda	$ff69		Check for serial port activity
 	bita	#$08
-	beq	LOOP
+	lbeq	LOOP
 	lda	$ff68
 
 *EXIT	jmp	$c135		Re-enter monitor (works on CoCo3?)
@@ -158,6 +235,47 @@ SPNRDEX	clr	PIA1D0		Reset selector switch inputs
 	lda	#$34
 	sta	PIA0C1
 
+	rts
+
+*
+* Outline selected box in white
+*
+*	X,A get clobbered
+*
+SELECT	ldx	#BXOUTLN
+	lda	CURBOX
+	lsla
+	ldx	a,x
+	lda	#WHITE
+	bsr	DRWOUTL
+	rts
+
+*
+* Outline selected box in black
+*
+*	X,A get clobbered
+*
+DSELECT	ldx	#BXOUTLN
+	lda	CURBOX
+	lsla
+	ldx	a,x
+	lda	#BLACK
+	bsr	DRWOUTL
+	rts
+
+*
+* Outline selected box in it's color
+*
+*	X,Y,A get clobbered
+*
+HILIGHT	ldx	#BXOUTLN
+	lda	CURBOX
+	lsla
+	ldx	a,x
+	ldy	#BXCOLOR
+	lsra
+	lda	a,y
+	bsr	DRWOUTL
 	rts
 
 *
@@ -248,5 +366,7 @@ BXCOLOR	fcb	$8f,$bf,$af,$9f
 
 SPNSTAT	rmb	1		Current spinner state value
 SPNHIST	rmb	3		Historical spinner readings
+
+CURBOX	rmb	1		Currently selected box
 
 	end	EXEC
