@@ -2,7 +2,7 @@
 
 CFLAGS=-Wall
 
-TARGETS=cocospin.bin cocospin.s19
+TARGETS=cocospin.bin cocospin.s19 followme.bin followme.s19
 
 all: $(TARGETS)
 
