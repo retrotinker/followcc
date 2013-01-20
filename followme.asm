@@ -39,6 +39,11 @@ SPINP2	equ	$02
 WHITE	equ	$cf
 BLACK	equ	$80
 
+MVCINIT	equ	$40
+MVCDLTA	equ	$05
+MVCTMIN	equ	MVCINIT-MVCDLTA
+MVCTMAX	equ	MVCINIT+MVCDLTA
+
 	org	LOAD
 
 EXEC	equ	*
@@ -62,6 +67,8 @@ EXEC	equ	*
 * Init other variables
 	clr	CURBOX
 	clr	BTNLAST
+	lda	#MVCINIT
+	sta	MOVCNTR
 
 * Init timing sources
 	lda	$ff03		Disable vsync interrupt generation
@@ -113,9 +120,79 @@ LOOP	tst	$ff00		Synchronize to sample frequency
 	tst	$ff00
 	sync
 
-	lbsr	BTNREAD
+	bsr	BTNREAD
 
-LOOPRD	ldd	SPNHIST		Shift historical spinner data
+	bsr	SPNDBNC
+
+	lda	#MVCTMIN
+	cmpa	MOVCNTR
+	bgt	LMOV_CW
+	lda	#MVCTMAX
+	cmpa	MOVCNTR
+	ble	LMOVCCW
+
+	bra	LOOPEX
+
+LMOV_CW	lbsr	DSELECT
+	lda	CURBOX
+	inca
+	anda	#$03
+	sta	CURBOX
+	lbsr	SELECT
+
+	lda	#MVCINIT
+	sta	MOVCNTR
+
+	bra	LOOPEX
+
+LMOVCCW	lbsr	DSELECT
+	lda	CURBOX
+	deca
+	anda	#$03
+	sta	CURBOX
+	lbsr	SELECT
+
+	lda	#MVCINIT
+	sta	MOVCNTR
+
+*	bra	LOOPEX
+
+LOOPEX	bra	CHKUART
+
+* Check for user break (development only)
+CHKUART	lda	$ff69		Check for serial port activity
+	bita	#$08
+	beq	LOOP
+	lda	$ff68
+
+*EXIT	jmp	$c135		Re-enter monitor (works on CoCo3?)
+EXIT	jmp	[$fffe]		Re-enter monitor
+
+*
+* Test the button status and react to changes
+*
+*	A gets clobbered
+*
+BTNREAD	lda	PIA0D0		Test the joystick button...
+	bita	#$02
+	bne	BTNOPEN
+
+	lda	#$ff		Indicate button was pressed...
+	sta	BTNLAST
+
+	lbsr	HILIGHT
+	bra	BTNREAD
+
+BTNOPEN	tst	BTNLAST		If button not previously pressed,
+	beq	BTNEXIT		then don't redraw selection indicator...
+	lbsr	SELECT
+
+BTNEXIT	rts
+
+*
+* Debounce the spinner, accumulate left/right movement
+*
+SPNDBNC	ldd	SPNHIST		Shift historical spinner data
 	std	SPNHIST+1
 
 	bsr	SPNREAD		Read current spinner values
@@ -140,57 +217,34 @@ LOOPRD	ldd	SPNHIST		Shift historical spinner data
 	lsla
 	ora	SPNSTAT
 	lsla
-	ldy	#LOOPCHK
+	ldy	#SPNDBCK
 	jmp	a,y		Choose proper action for current state
 
-LOOPCHK	bra	LOOPEX		00 -> 00 : No change, restart loop
-	bra	LMOV_CW		00 -> 01 : Record state change
-	bra	LMOVCCW		00 -> 10 : Record state change
-	bra	LOOPBAD		00 -> 11 : Invalid state change!
-	bra	LMOVCCW		01 -> 00 : Record state change
-	bra	LOOPEX		01 -> 01 : No change, restart loop
-	bra	LOOPBAD		01 -> 10 : Invalid state change!
-	bra	LMOV_CW		01 -> 11 : Record state change
-	bra	LMOV_CW		10 -> 00 : Record state change
-	bra	LOOPBAD		10 -> 01 : Invalid state change!
-	bra	LOOPEX		10 -> 10 : No change, restart loop
-	bra	LMOVCCW		10 -> 11 : Record state change
-	bra	LOOPBAD		11 -> 00 : Invalid state change!
-	bra	LMOVCCW		11 -> 01 : Record state change
-	bra	LMOV_CW		11 -> 10 : Record state change
-	bra	LOOPEX		11 -> 11 : No change, restart loop
+SPNDBCK	bra	SPNDBEX		00 -> 00 : No change, exit
+	bra	SPNM_CW		00 -> 01 : Record state change
+	bra	SPNMCCW		00 -> 10 : Record state change
+	bra	SPNDBAD		00 -> 11 : Invalid state change!
+	bra	SPNMCCW		01 -> 00 : Record state change
+	bra	SPNDBEX		01 -> 01 : No change, exit
+	bra	SPNDBAD		01 -> 10 : Invalid state change!
+	bra	SPNM_CW		01 -> 11 : Record state change
+	bra	SPNM_CW		10 -> 00 : Record state change
+	bra	SPNDBAD		10 -> 01 : Invalid state change!
+	bra	SPNDBEX		10 -> 10 : No change, exit
+	bra	SPNMCCW		10 -> 11 : Record state change
+	bra	SPNDBAD		11 -> 00 : Invalid state change!
+	bra	SPNMCCW		11 -> 01 : Record state change
+	bra	SPNM_CW		11 -> 10 : Record state change
+	bra	SPNDBEX		11 -> 11 : No change, exit
 
-LMOV_CW	bsr	DSELECT
-	lda	CURBOX
-	inca
-	anda	#$03
-	sta	CURBOX
-	bsr	SELECT
+SPNM_CW	dec	MOVCNTR
+	bra	SPNDBEX
 
-	bra	LOOPEX
+SPNMCCW	inc	MOVCNTR
+	bra	SPNDBEX
 
-LMOVCCW	bsr	DSELECT
-	lda	CURBOX
-	deca
-	anda	#$03
-	sta	CURBOX
-	bsr	SELECT
-	bra	LOOPEX
-
-*	bra	LOOPEX
-
-LOOPEX	bra	CHKUART
-
-LOOPBAD	bra	LOOPEX		Ignore invalide state transitions
-
-* Check for user break (development only)
-CHKUART	lda	$ff69		Check for serial port activity
-	bita	#$08
-	lbeq	LOOP
-	lda	$ff68
-
-*EXIT	jmp	$c135		Re-enter monitor (works on CoCo3?)
-EXIT	jmp	[$fffe]		Re-enter monitor
+SPNDBAD	equ	*
+SPNDBEX	rts
 
 *
 * Read the spinner
@@ -230,27 +284,6 @@ SPNRDEX	clr	PIA1D0		Reset selector switch inputs
 	sta	PIA0C1
 
 	rts
-
-*
-* Test the button status and react to changes
-*
-*	A gets clobbered
-*
-BTNREAD	lda	PIA0D0		Test the joystick button...
-	bita	#$02
-	bne	BTNOPEN
-
-	lda	#$ff		Indicate button was pressed...
-	sta	BTNLAST
-
-	bsr	HILIGHT
-	bra	BTNREAD
-
-BTNOPEN	tst	BTNLAST		If button not previously pressed,
-	beq	BTNEXIT		then don't redraw selection indicator...
-	bsr	SELECT
-
-BTNEXIT	rts
 
 *
 * Outline selected box in white
@@ -385,5 +418,7 @@ SPNHIST	rmb	3		Historical spinner readings
 BTNLAST	rmb	1		Previous button status
 
 CURBOX	rmb	1		Currently selected box
+
+MOVCNTR	rmb	1		Accumulated movement
 
 	end	EXEC
