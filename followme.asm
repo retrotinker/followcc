@@ -1,5 +1,5 @@
 *
-* Copyright (c) 2009-2011, John W. Linville <linville@tuxdriver.com>
+* Copyright (c) 2013, John W. Linville <linville@tuxdriver.com>
 *
 * Permission to use, copy, modify, and/or distribute this software for any
 * purpose with or without fee is hereby granted, provided that the above
@@ -14,8 +14,8 @@
 * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 *
 
-	NAM	CoCoSpin
-	TTL	Demo code for using a rotary controller
+	NAM	Follow Me
+	TTL	Simon-like game using a rotary controller
 
 LOAD	equ	$4000		Actual load address for binary
 
