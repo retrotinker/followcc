@@ -61,6 +61,7 @@ EXEC	equ	*
 
 * Init other variables
 	clr	CURBOX
+	clr	BTNLAST
 
 * Init timing sources
 	lda	$ff03		Disable vsync interrupt generation
@@ -112,14 +113,7 @@ LOOP	tst	$ff00		Synchronize to sample frequency
 	tst	$ff00
 	sync
 
-	lda	PIA0D0		Test the joystick button...
-	bita	#$02
-	beq	LOOPBTN
-
-	lbsr	SELECT
-	bra	LOOPRD
-
-LOOPBTN	lbsr	HILIGHT
+	lbsr	BTNREAD
 
 LOOPRD	ldd	SPNHIST		Shift historical spinner data
 	std	SPNHIST+1
@@ -236,6 +230,27 @@ SPNRDEX	clr	PIA1D0		Reset selector switch inputs
 	sta	PIA0C1
 
 	rts
+
+*
+* Test the button status and react to changes
+*
+*	A gets clobbered
+*
+BTNREAD	lda	PIA0D0		Test the joystick button...
+	bita	#$02
+	bne	BTNOPEN
+
+	lda	#$ff		Indicate button was pressed...
+	sta	BTNLAST
+
+	bsr	HILIGHT
+	bra	BTNREAD
+
+BTNOPEN	tst	BTNLAST		If button not previously pressed,
+	beq	BTNEXIT		then don't redraw selection indicator...
+	bsr	SELECT
+
+BTNEXIT	rts
 
 *
 * Outline selected box in white
@@ -366,6 +381,8 @@ BXCOLOR	fcb	$8f,$bf,$af,$9f
 
 SPNSTAT	rmb	1		Current spinner state value
 SPNHIST	rmb	3		Historical spinner readings
+
+BTNLAST	rmb	1		Previous button status
 
 CURBOX	rmb	1		Currently selected box
 
