@@ -192,6 +192,8 @@ BTNEXIT	rts
 *
 * Debounce the spinner, accumulate left/right movement
 *
+*	Y,A,B get clobbered
+*
 SPNDBNC	ldd	SPNHIST		Shift historical spinner data
 	std	SPNHIST+1
 
@@ -410,8 +412,14 @@ BXOUTLN	fdb	VIDBASE
 	fdb	VIDBASE+VIDSIZE/2+VIDLINE/2
 	fdb	VIDBASE+VIDSIZE/2
 
+*
+* Constants
+*
 BXCOLOR	fcb	$8f,$bf,$af,$9f
 
+*
+* Pre-allocated variables
+*
 SPNSTAT	rmb	1		Current spinner state value
 SPNHIST	rmb	3		Historical spinner readings
 
