@@ -33,6 +33,8 @@ VIDBASE	equ	$0400
 VIDLINE	equ	$20
 VIDSIZE	equ	$0200
 
+SQWAVE	equ	$02
+
 SPINP1	equ	$01
 SPINP2	equ	$02
 
@@ -79,6 +81,16 @@ EXEC	equ	*
 	lda	$ff01		Enable hsync interrupt generation
 	ora	#$01
 	sta	$ff01
+
+* Init audio output
+	lda	PIA1C1		Enable square wave audio output
+	anda	#$fb
+	sta	PIA1C1
+	ldb	#SQWAVE
+	orb	PIA1D1
+	stb	PIA1D1
+	ora	#$04
+	sta	PIA1C1
 
 * Clear the screen
 	lbsr	CLRSCN
@@ -171,21 +183,36 @@ EXIT	jmp	[$fffe]		Re-enter monitor
 *
 * Test the button status and react to changes
 *
-*	A gets clobbered
+*	X,A,B get clobbered
 *
 BTNREAD	lda	PIA0D0		Test the joystick button...
 	bita	#$02
-	bne	BTNOPEN
+	bne	BTNEXIT
 
-	lda	#$ff		Indicate button was pressed...
-	sta	BTNLAST
+	lbsr	HILIGHT		Indicate button was pressed...
 
-	lbsr	HILIGHT
-	bra	BTNREAD
+	ldx	#BXDELAY	Set time counter
+	lda	CURBOX
+	ldb	a,x
+	pshs	b
 
-BTNOPEN	tst	BTNLAST		If button not previously pressed,
-	beq	BTNEXIT		then don't redraw selection indicator...
-	lbsr	SELECT
+BTNPLAY	sync			Wait for next hsync clock...
+	lda	PIA0D0		Clear hsync indicator...
+	decb			Decrement time counter
+	bne	BTNPLAY
+
+BTNSND	lda	PIA1D1		Toggle square wave output...
+	eora	#SQWAVE
+	sta	PIA1D1
+
+	ldb	,s		Reset time counter
+
+	lda	PIA0D0		Check for button release...
+	bita	#$02
+	beq	BTNPLAY
+
+	leas	1,s		Clean-up stack...
+	lbsr	SELECT		Indicate button no longer pressed...
 
 BTNEXIT	rts
 
@@ -416,6 +443,9 @@ BXOUTLN	fdb	VIDBASE
 * Constants
 *
 BXCOLOR	fcb	$8f,$bf,$af,$9f
+
+*BXDELAY	fcb	$28,$1e,$14,$18		Actual bugle notes
+BXDELAY	fcb	$26,$1f,$13,$19		Original Simon appoximation
 
 *
 * Pre-allocated variables
