@@ -12,5 +12,5 @@ all: $(TARGETS)
 %.s19: %.asm
 	mamou -mb -ts -l -y -o$@ $<
 
-.c.o:
-	$(CC) $(CFLAGS) -c -o $@ $<
+clean:
+	$(RM) $(TARGETS)
