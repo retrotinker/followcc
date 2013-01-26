@@ -46,6 +46,9 @@ MVCDLTA	equ	$0a
 MVCTMIN	equ	MVCINIT-MVCDLTA
 MVCTMAX	equ	MVCINIT+MVCDLTA
 
+TONEDLY	equ	$19ca
+PAUSDLY	equ	$0312
+
 	org	LOAD
 
 EXEC	equ	*
@@ -128,6 +131,8 @@ STRTWA2	lda	PIA0D0		Test the joystick button...
 	bita	#$02
 	beq	STRTWA2
 
+	lbsr	SEQPLAY
+
 * Draw initial selection outline
 	lbsr	SELECT
 
@@ -199,21 +204,21 @@ BTNREAD	lda	PIA0D0		Test the joystick button...
 
 	lbsr	HILIGHT		Indicate button was pressed...
 
-	ldx	#BXDELAY	Set time counter
+	ldx	#BXDELAY	Set freq counter
 	lda	CURBOX
 	ldb	a,x
 	pshs	b
 
 BTNPLAY	sync			Wait for next hsync clock...
 	lda	PIA0D0		Clear hsync indicator...
-	decb			Decrement time counter
+	decb			Decrement freq counter
 	bne	BTNPLAY
 
 BTNSND	lda	PIA1D1		Toggle square wave output...
 	eora	#SQWAVE
 	sta	PIA1D1
 
-	ldb	,s		Reset time counter
+	ldb	,s		Reset freq counter
 
 	lda	PIA0D0		Check for button release...
 	bita	#$02
@@ -323,6 +328,87 @@ SPNRDEX	clr	PIA1D0		Reset selector switch inputs
 	lda	#$34
 	sta	PIA0C1
 
+	rts
+
+*
+* Play sequence of tones
+*
+*	X,A get clobbered
+*
+*
+SEQPLAY	lda	TONELEN		Get current sequence length
+	beq	SEQPLEX		Exit if zero-length sequence
+	pshs	a
+
+	ldx	#TONESEQ
+
+SEQLOOP	lda	,x+		Get next tone in sequence
+	pshs	x
+	bsr	TONEPLY		Play it!
+	bsr	PAUSPLY		Pause between tones...
+	puls	x
+
+	dec	,s		Decrement remaining sequence length
+	bne	SEQLOOP		Continue if not done
+
+	leas	1,s		Clean-up stack
+
+SEQPLEX	rts
+
+*
+* Timed play of selected tone
+*
+*	A input tone to play, clobbered
+*	X,B get clobbered
+*
+TONEPLY	ldx	#BXDELAY	Set freq counter
+	ldb	a,x
+	pshs	b
+
+	ldd	#TONEDLY	Set time counter
+	pshs	d
+
+	ldb	2,s		Reset freq counter
+	lda	PIA0D0		Clear hsync indicator...
+TNPLYLP	sync			Wait for next hsync clock...
+	lda	PIA0D0		Clear hsync indicator...
+
+	dec	1,s		Decrement time counter
+	bne	TNPLYL1
+	dec	,s
+	beq	TNPLYEX
+
+TNPLYL1	decb			Decrement freq counter
+	bne	TNPLYLP
+
+	lda	PIA1D1		Toggle square wave output...
+	eora	#SQWAVE
+	sta	PIA1D1
+
+	ldb	2,s		Reset freq counter
+	bra	TNPLYLP
+
+TNPLYEX	leas	3,s		Clean-up stack
+	rts
+
+*
+* Timed pause between tones
+*
+*	A,B get clobbered
+*
+PAUSPLY	ldd	#PAUSDLY	Set time counter
+	pshs	d
+
+	lda	PIA0D0		Clear hsync indicator...
+PAUSLOP	sync			Wait for next hsync clock...
+	lda	PIA0D0		Clear hsync indicator...
+
+	dec	1,s		Decrement time counter
+	bne	PAUSLOP
+	dec	,s
+	bne	PAUSLOP
+
+	leas	2,s		Clean-up stack
 	rts
 
 *
@@ -469,5 +555,8 @@ BTNLAST	rmb	1		Previous button status
 CURBOX	rmb	1		Currently selected box
 
 MOVCNTR	rmb	1		Accumulated movement
+
+TONESEQ	fcb	$03,$01,$02,$03,$00,$00,$03
+TONELEN	fcb	7
 
 	end	EXEC
