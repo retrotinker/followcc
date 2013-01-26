@@ -47,7 +47,8 @@ MVCTMIN	equ	MVCINIT-MVCDLTA
 MVCTMAX	equ	MVCINIT+MVCDLTA
 
 TONEDLY	equ	$19ca
-PAUSDLY	equ	$0312
+PPLYDLY	equ	$0312
+PBTNDLY	equ	$3120
 
 	org	LOAD
 
@@ -157,17 +158,32 @@ STRTWA2	lda	PIA0D0		Test the joystick button...
 	lda	#PRBTLEN
 	lbsr	DRAWBLK
 
+GAMLOOP	lda	TONELEN		Add a tone to the sequence
+	inca
+	cmpa	#(TONECNT-TONESEQ)	Check for completed sequence
+	lbge	GAMEWON		Player wins!
+	sta	TONELEN		Otherwise, save new sequence length
+
+	ldb	TONECNT		Use the free-running count value
+	ldx	#(TONESEQ-1)	Store it at the new offset in the sequence
+	stb	a,x
+
 	lbsr	SEQPLAY
 
 * Draw initial selection outline
 	lda	CURBOX
 	lbsr	SELECT
 
-LOOP	lbsr	NEXTCHK		Synchronize to sample frequency
+CTLLOOP	lbsr	NEXTCHK		Synchronize to sample frequency
 
 	bsr	BTNREAD
+	tsta
+	bne	CTLSPIN		No button press, read the spinner
 
-	lbsr	SPNDBNC
+	lbsr	PAUSBTN		Pause after button press
+	bra	GAMLOOP		Now, extend sequence and continue
+
+CTLSPIN	lbsr	SPNDBNC
 
 	lda	#MVCTMIN
 	cmpa	MOVCNTR
@@ -176,7 +192,7 @@ LOOP	lbsr	NEXTCHK		Synchronize to sample frequency
 	cmpa	MOVCNTR
 	ble	LMOVCCW
 
-	bra	LOOPEX
+	bra	CTLLPEX
 
 LMOV_CW	lda	CURBOX
 	lbsr	DSELECT
@@ -189,7 +205,7 @@ LMOV_CW	lda	CURBOX
 	lda	#MVCINIT
 	sta	MOVCNTR
 
-	bra	LOOPEX
+	bra	CTLLPEX
 
 LMOVCCW	lda	CURBOX
 	lbsr	DSELECT
@@ -202,14 +218,14 @@ LMOVCCW	lda	CURBOX
 	lda	#MVCINIT
 	sta	MOVCNTR
 
-*	bra	LOOPEX
+*	bra	CTLLPEX
 
-LOOPEX	bra	CHKUART
+CTLLPEX	bra	CHKUART
 
 * Check for user break (development only)
 CHKUART	lda	$ff69		Check for serial port activity
 	bita	#$08
-	beq	LOOP
+	beq	CTLLOOP
 	lda	$ff68
 
 *EXIT	jmp	$c135		Re-enter monitor (works on CoCo3?)
@@ -219,6 +235,8 @@ EXIT	jmp	[$fffe]		Re-enter monitor
 * Test the button status and react to changes
 *
 *	X,A,B get clobbered
+*
+*	A cleared if button was pressed
 *
 BTNREAD	lda	PIA0D0		Test the joystick button...
 	bita	#$02
@@ -253,6 +271,8 @@ BTNSND	lda	PIA1D1		Toggle square wave output...
 
 	lda	#MVCINIT	Reset movement counter
 	sta	MOVCNTR
+
+	clra			Indicate button pressed
 
 BTNEXIT	rts
 
@@ -361,7 +381,7 @@ SPNRDEX	clr	PIA1D0		Reset selector switch inputs
 *
 NEXTCHK	lda	TONECNT
 	inca
-	anda	$03
+	anda	#$03
 	sta	TONECNT
 
 	tst	PIA0D0
@@ -445,17 +465,37 @@ TNPLYEX	leas	3,s		Clean-up stack
 *
 *	A,B get clobbered
 *
-PAUSPLY	ldd	#PAUSDLY	Set time counter
+PAUSPLY	ldd	#PPLYDLY	Set time counter
 	pshs	d
 
 	lda	PIA0D0		Clear hsync indicator...
-PAUSLOP	sync			Wait for next hsync clock...
+PPLYLOP	sync			Wait for next hsync clock...
 	lda	PIA0D0		Clear hsync indicator...
 
 	dec	1,s		Decrement time counter
-	bne	PAUSLOP
+	bne	PPLYLOP
 	dec	,s
-	bne	PAUSLOP
+	bne	PPLYLOP
+
+	leas	2,s		Clean-up stack
+	rts
+
+*
+* Timed pause after button press
+*
+*	A,B get clobbered
+*
+PAUSBTN	ldd	#PBTNDLY	Set time counter
+	pshs	d
+
+	lda	PIA0D0		Clear hsync indicator...
+PBTNLOP	sync			Wait for next hsync clock...
+	lda	PIA0D0		Clear hsync indicator...
+
+	dec	1,s		Decrement time counter
+	bne	PBTNLOP
+	dec	,s
+	bne	PBTNLOP
 
 	leas	2,s		Clean-up stack
 	rts
@@ -617,6 +657,16 @@ DRAWBLK	ldb	#$80
 	bne	DRAWBLK
 
 	rts
+
+*
+* Game won
+*
+GAMEWON	jmp	EXEC		Surely, we can do better?
+
+*
+* Game lost
+*
+GAMEOVR	jmp	EXEC		Surely, we can do better?
 
 *
 * Constants
