@@ -170,6 +170,8 @@ GAMLOOP	lda	TONELEN		Add a tone to the sequence
 
 	lbsr	SEQPLAY
 
+	clr	TONECHK		Restart tone sequence checking
+
 * Draw initial selection outline
 	lda	CURBOX
 	lbsr	SELECT
@@ -181,6 +183,19 @@ CTLLOOP	lbsr	NEXTCHK		Synchronize to sample frequency
 	bne	CTLSPIN		No button press, read the spinner
 
 	lbsr	PAUSBTN		Pause after button press
+
+	lda	TONECHK		Compare next tone in seq to current selection
+	ldx	#TONESEQ
+	ldb	CURBOX
+	cmpb	a,x
+	lbne	GAMEOVR		No match, game over!
+
+	inca			Increment sequence check cursor
+	sta	TONECHK
+
+	cmpa	TONELEN		Compare sequence check to sequence length
+	blt	CTLLOOP		Not done, continue checking...
+
 	bra	GAMLOOP		Now, extend sequence and continue
 
 CTLSPIN	lbsr	SPNDBNC
@@ -709,5 +724,7 @@ TONELEN	rmb	1		Length of tone sequence
 TONESEQ	rmb	32		Tone sequence data
 
 TONECNT	rmb	1		Running counter used to generate tone seq
+
+TONECHK	rmb	1		Cursor used to keep track of tone matching
 
 	end	EXEC
