@@ -123,6 +123,17 @@ EXEC	equ	*
 	lda	3,y
 	lbsr	DRAWBOX
 
+* Display game start message
+	ldx	#SMSYSTR
+	ldy	#(VIDBASE+VIDSIZE/2-22)
+	lda	#SMSYLEN
+	lbsr	DRAWSTR
+
+	ldx	#PRBTSTR
+	ldy	#(VIDBASE+VIDSIZE/2+7)
+	lda	#PRBTLEN
+	lbsr	DRAWSTR
+
 * Wait for button press/release to start game
 STRTWAI	lda	PIA0D0		Test the joystick button...
 	bita	#$02
@@ -130,6 +141,15 @@ STRTWAI	lda	PIA0D0		Test the joystick button...
 STRTWA2	lda	PIA0D0		Test the joystick button...
 	bita	#$02
 	beq	STRTWA2
+
+* Erase game start message
+	ldy	#(VIDBASE+VIDSIZE/2-22)
+	lda	#SMSYLEN
+	lbsr	DRAWBLK
+
+	ldy	#(VIDBASE+VIDSIZE/2+7)
+	lda	#PRBTLEN
+	lbsr	DRAWBLK
 
 	lbsr	SEQPLAY
 
@@ -546,12 +566,62 @@ BXOUTLN	fdb	VIDBASE
 	fdb	VIDBASE+VIDSIZE/2
 
 *
+* Draw a normal text string on the display
+*
+* 	X points to the source, clobbered
+*	Y points to the dest, clobbered
+*	A length of the string, clobbered
+*	B gets clobbered
+*	Do not pass-in a zero length!
+*
+DRAWSTR	ldb	,x+
+	stb	,y+
+
+	deca			More characters?
+	bne	DRAWSTR
+
+	rts
+
+*
+* Draw black characters on the display
+*
+*	Y points to the dest, clobbered
+*	A length of the string, clobbered
+*	B gets clobbered
+*	Do not pass-in a zero length!
+*
+DRAWBLK	ldb	#$80
+	stb	,y+
+
+	deca			More characters?
+	bne	DRAWBLK
+
+	rts
+
+*
 * Constants
 *
 BXCOLOR	fcb	$8f,$bf,$af,$9f
 
 *BXDELAY	fcb	$28,$1e,$14,$18		Actual bugle notes
 BXDELAY	fcb	$26,$1f,$13,$19		Original Simon appoximation
+
+*
+* Data for "SIMON SAYS"
+*
+SMSYSTR	fcb	$20,$13,$09,$0d,$0f,$0e,$20,$13
+	fcb	$01,$19,$13,$20
+SMSYEND	equ	*
+SMSYLEN	equ	(SMSYEND-SMSYSTR)
+
+*
+* Data for "PRESS THE BUTTON"
+*
+PRBTSTR	fcb	$20,$10,$12,$05,$13,$13,$20,$14
+	fcb	$08,$05,$20,$02,$15,$14,$14,$0f
+	fcb	$0e,$20
+PRBTEND	equ	*
+PRBTLEN	equ	(PRBTEND-PRBTSTR)
 
 *
 * Pre-allocated variables
