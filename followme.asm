@@ -134,6 +134,7 @@ STRTWA2	lda	PIA0D0		Test the joystick button...
 	lbsr	SEQPLAY
 
 * Draw initial selection outline
+	lda	CURBOX
 	lbsr	SELECT
 
 LOOP	tst	$ff00		Synchronize to sample frequency
@@ -147,7 +148,7 @@ LOOP	tst	$ff00		Synchronize to sample frequency
 
 	bsr	BTNREAD
 
-	bsr	SPNDBNC
+	lbsr	SPNDBNC
 
 	lda	#MVCTMIN
 	cmpa	MOVCNTR
@@ -158,7 +159,8 @@ LOOP	tst	$ff00		Synchronize to sample frequency
 
 	bra	LOOPEX
 
-LMOV_CW	lbsr	DSELECT
+LMOV_CW	lda	CURBOX
+	lbsr	DSELECT
 	lda	CURBOX
 	inca
 	anda	#$03
@@ -170,7 +172,8 @@ LMOV_CW	lbsr	DSELECT
 
 	bra	LOOPEX
 
-LMOVCCW	lbsr	DSELECT
+LMOVCCW	lda	CURBOX
+	lbsr	DSELECT
 	lda	CURBOX
 	deca
 	anda	#$03
@@ -202,6 +205,7 @@ BTNREAD	lda	PIA0D0		Test the joystick button...
 	bita	#$02
 	bne	BTNEXIT
 
+	lda	CURBOX		Select box to highlight...
 	lbsr	HILIGHT		Indicate button was pressed...
 
 	ldx	#BXDELAY	Set freq counter
@@ -225,6 +229,7 @@ BTNSND	lda	PIA1D1		Toggle square wave output...
 	beq	BTNPLAY
 
 	leas	1,s		Clean-up stack...
+	lda	CURBOX
 	lbsr	SELECT		Indicate button no longer pressed...
 
 	lda	#MVCINIT	Reset movement counter
@@ -343,10 +348,14 @@ SEQPLAY	lda	TONELEN		Get current sequence length
 	ldx	#TONESEQ
 
 SEQLOOP	lda	,x+		Get next tone in sequence
-	pshs	x
+	pshs	a,x		Save A,X since they get clobbered...
+	bsr	HILIGHT		Highlight color matching this tone...
+	lda	,s		Restore A from stack for input to TONEPLY
 	bsr	TONEPLY		Play it!
 	bsr	PAUSPLY		Pause between tones...
-	puls	x
+	lda	,s		Restore A from stack for input to DSELECT
+	bsr	DSELECT		Un-highlight this color...
+	puls	a,x
 
 	dec	,s		Decrement remaining sequence length
 	bne	SEQLOOP		Continue if not done
@@ -414,10 +423,10 @@ PAUSLOP	sync			Wait for next hsync clock...
 *
 * Outline selected box in white
 *
-*	X,A get clobbered
+*	A box to select, clobbered
+*	X gets clobbered
 *
 SELECT	ldx	#BXOUTLN
-	lda	CURBOX
 	lsla
 	ldx	a,x
 	lda	#WHITE
@@ -427,10 +436,10 @@ SELECT	ldx	#BXOUTLN
 *
 * Outline selected box in black
 *
-*	X,A get clobbered
+*	A box to deselect, clobbered
+*	X gets clobbered
 *
 DSELECT	ldx	#BXOUTLN
-	lda	CURBOX
 	lsla
 	ldx	a,x
 	lda	#BLACK
@@ -440,10 +449,10 @@ DSELECT	ldx	#BXOUTLN
 *
 * Outline selected box in it's color
 *
-*	X,Y,A get clobbered
+*	A box to higlight, clobbered
+*	X,Y get clobbered
 *
 HILIGHT	ldx	#BXOUTLN
-	lda	CURBOX
 	lsla
 	ldx	a,x
 	ldy	#BXCOLOR
