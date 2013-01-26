@@ -120,6 +120,14 @@ EXEC	equ	*
 	lda	3,y
 	lbsr	DRAWBOX
 
+* Wait for button press/release to start game
+STRTWAI	lda	PIA0D0		Test the joystick button...
+	bita	#$02
+	bne	STRTWAI
+STRTWA2	lda	PIA0D0		Test the joystick button...
+	bita	#$02
+	beq	STRTWA2
+
 * Draw initial selection outline
 	lbsr	SELECT
 
