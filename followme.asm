@@ -74,6 +74,8 @@ EXEC	equ	*
 	clr	BTNLAST
 	lda	#MVCINIT
 	sta	MOVCNTR
+	clr	TONELEN
+	clr	TONECNT
 
 * Init timing sources
 	lda	$ff03		Disable vsync interrupt generation
@@ -137,7 +139,11 @@ EXEC	equ	*
 * Wait for button press/release to start game
 STRTWAI	lda	PIA0D0		Test the joystick button...
 	bita	#$02
-	bne	STRTWAI
+	beq	STRTWA2		Wait for button release...
+
+	lbsr	NEXTCHK		Wait for next line
+	bra	STRTWAI		Repeat the loop
+
 STRTWA2	lda	PIA0D0		Test the joystick button...
 	bita	#$02
 	beq	STRTWA2
@@ -157,14 +163,7 @@ STRTWA2	lda	PIA0D0		Test the joystick button...
 	lda	CURBOX
 	lbsr	SELECT
 
-LOOP	tst	$ff00		Synchronize to sample frequency
-	sync
-	tst	$ff00
-	sync
-	tst	$ff00
-	sync
-	tst	$ff00
-	sync
+LOOP	lbsr	NEXTCHK		Synchronize to sample frequency
 
 	bsr	BTNREAD
 
@@ -352,6 +351,27 @@ SPNRDEX	clr	PIA1D0		Reset selector switch inputs
 	sta	PIA0C0
 	lda	#$34
 	sta	PIA0C1
+
+	rts
+
+*
+* Wait for next hsync-clocked controller check term
+*
+*	A gets clobbered
+*
+NEXTCHK	lda	TONECNT
+	inca
+	anda	$03
+	sta	TONECNT
+
+	tst	PIA0D0
+	sync
+	tst	PIA0D0
+	sync
+	tst	PIA0D0
+	sync
+	tst	PIA0D0
+	sync
 
 	rts
 
@@ -635,7 +655,9 @@ CURBOX	rmb	1		Currently selected box
 
 MOVCNTR	rmb	1		Accumulated movement
 
-TONESEQ	fcb	$03,$01,$02,$03,$00,$00,$03
-TONELEN	fcb	7
+TONELEN	rmb	1		Length of tone sequence
+TONESEQ	rmb	32		Tone sequence data
+
+TONECNT	rmb	1		Running counter used to generate tone seq
 
 	end	EXEC
