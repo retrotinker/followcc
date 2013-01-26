@@ -222,6 +222,9 @@ BTNSND	lda	PIA1D1		Toggle square wave output...
 	leas	1,s		Clean-up stack...
 	lbsr	SELECT		Indicate button no longer pressed...
 
+	lda	#MVCINIT	Reset movement counter
+	sta	MOVCNTR
+
 BTNEXIT	rts
 
 *
