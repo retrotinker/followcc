@@ -50,6 +50,9 @@ TONEDLY	equ	$19ca
 PPLYDLY	equ	$0312
 PBTNDLY	equ	$3120
 
+FAILDLY	equ	$5c1c
+FAILSND	equ	$bb
+
 	org	LOAD
 
 EXEC	equ	*
@@ -178,19 +181,14 @@ GAMLOOP	lda	TONELEN		Add a tone to the sequence
 
 CTLLOOP	lbsr	NEXTCHK		Synchronize to sample frequency
 
-	bsr	BTNREAD
-	tsta
+	bsr	BTNREAD		Check for correct sequence done in BTNREAD
+	tsta			If button pressed, assume it was correct!
 	bne	CTLSPIN		No button press, read the spinner
 
 	lbsr	PAUSBTN		Pause after button press
 
-	lda	TONECHK		Compare next tone in seq to current selection
-	ldx	#TONESEQ
-	ldb	CURBOX
-	cmpb	a,x
-	lbne	GAMEOVR		No match, game over!
-
-	inca			Increment sequence check cursor
+	lda	TONECHK		Increment sequence check cursor
+	inca
 	sta	TONECHK
 
 	cmpa	TONELEN		Compare sequence check to sequence length
@@ -262,6 +260,12 @@ BTNREAD	lda	PIA0D0		Test the joystick button...
 	lda	CURBOX		Select box to highlight...
 	lbsr	HILIGHT		Indicate button was pressed...
 
+	lda	TONECHK		Compare next tone in seq to current selection
+	ldx	#TONESEQ
+	ldb	CURBOX
+	cmpb	a,x
+	bne	BTNFAIL		No match!
+
 	ldx	#BXDELAY	Set freq counter
 	lda	CURBOX
 	ldb	a,x
@@ -292,6 +296,9 @@ BTNSND	lda	PIA1D1		Toggle square wave output...
 	clra			Indicate button pressed
 
 BTNEXIT	rts
+
+BTNFAIL	leas	2,s		Simulate a return to clean-up stack...
+	jmp	GAMEOVR
 
 *
 * Debounce the spinner, accumulate left/right movement
@@ -426,7 +433,7 @@ SEQPLAY	lda	TONELEN		Get current sequence length
 
 SEQLOOP	lda	,x+		Get next tone in sequence
 	pshs	a,x		Save A,X since they get clobbered...
-	bsr	HILIGHT		Highlight color matching this tone...
+	lbsr	HILIGHT		Highlight color matching this tone...
 	lda	,s		Restore A from stack for input to TONEPLY
 	bsr	TONEPLY		Play it!
 	lda	,s		Restore A from stack for input to DSELECT
@@ -453,6 +460,7 @@ TONEPLY	ldx	#BXDELAY	Set freq counter
 
 	ldd	#TONEDLY	Set time counter
 	pshs	d
+	inc	,s		Offset MSB value for proper delay counting
 
 	ldb	2,s		Reset freq counter
 	lda	PIA0D0		Clear hsync indicator...
@@ -484,6 +492,7 @@ TNPLYEX	leas	3,s		Clean-up stack
 *
 PAUSPLY	ldd	#PPLYDLY	Set time counter
 	pshs	d
+	inc	,s		Offset MSB value for proper delay counting
 
 	lda	PIA0D0		Clear hsync indicator...
 PPLYLOP	sync			Wait for next hsync clock...
@@ -683,7 +692,39 @@ GAMEWON	jmp	EXEC		Surely, we can do better?
 *
 * Game lost
 *
-GAMEOVR	jmp	EXEC		Surely, we can do better?
+GAMEOVR	ldb	#FAILSND	Set freq counter
+	pshs	b
+
+	ldd	#FAILDLY	Set time counter
+	pshs	d
+	inc	,s		Offset MSB value for proper delay counting
+
+	ldb	2,s		Reset freq counter
+	lda	PIA0D0		Clear hsync indicator...
+GOVPLAY	sync			Wait for next hsync clock...
+	lda	PIA0D0		Clear hsync indicator...
+
+	dec	1,s		Decrement time counter
+	bne	GOVLOOP
+	dec	,s
+	beq	GOBTCLR
+
+GOVLOOP	decb			Decrement freq counter
+	bne	GOVPLAY
+
+	lda	PIA1D1		Toggle square wave output...
+	eora	#SQWAVE
+	sta	PIA1D1
+
+	ldb	2,s		Reset freq counter
+	bra	GOVPLAY
+
+GOBTCLR	lda	PIA0D0		Test the joystick button...
+	bita	#$02
+	beq	GOBTCLR
+
+	leas	3,s		Clean-up the stack...
+	jmp	EXEC
 
 *
 * Constants
