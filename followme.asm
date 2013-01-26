@@ -196,6 +196,8 @@ CTLLOOP	lbsr	NEXTCHK		Synchronize to sample frequency
 	cmpa	TONELEN		Compare sequence check to sequence length
 	blt	CTLLOOP		Not done, continue checking...
 
+	lda	CURBOX		Deselect current box
+	lbsr	DSELECT
 	bra	GAMLOOP		Now, extend sequence and continue
 
 CTLSPIN	lbsr	SPNDBNC
