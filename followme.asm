@@ -71,26 +71,6 @@ EXEC	equ	*
 * Disable IRQ and FIRQ
 	orcc	#$50
 
-* Init spinner control variables
-	clr	SPNSTAT
-	clr	SPNHIST
-	clr	SPNHIST+1
-	clr	SPNHIST+2
-
-	lbsr	SPNREAD		Read current spinner values
-	stb	SPNSTAT		Pre-load spinner state
-
-* Init other variables
-	clr	CURBOX
-	clr	BTNLAST
-	lda	#MVCINIT
-	sta	MOVCNTR
-	clr	TONELEN
-	clr	TONECNT
-
-	ldd	#TONDLY1
-	std	TONEDLY
-
 * Init timing sources
 	lda	$ff03		Disable vsync interrupt generation
 	anda	#$fe
@@ -140,7 +120,7 @@ EXEC	equ	*
 	lbsr	DRAWBOX
 
 * Display game start message
-	ldx	#SMSYSTR
+GAMATTR	ldx	#SMSYSTR
 	ldy	#(VIDBASE+VIDSIZE/2-22)
 	lda	#SMSYLEN
 	lbsr	DRAWSTR
@@ -149,6 +129,9 @@ EXEC	equ	*
 	ldy	#(VIDBASE+VIDSIZE/2+7)
 	lda	#PRBTLEN
 	lbsr	DRAWSTR
+
+* TONECNT is a special case, should be initialized here...
+	clr	TONECNT
 
 * Wait for button press/release to start game
 STRTWAI	lda	PIA0D0		Test the joystick button...
@@ -170,6 +153,8 @@ STRTWA2	lda	PIA0D0		Test the joystick button...
 	ldy	#(VIDBASE+VIDSIZE/2+7)
 	lda	#PRBTLEN
 	lbsr	DRAWBLK
+
+GAMSTRT	lbsr	VARINIT
 
 GAMLOOP	lda	TONELEN		Add a tone to the sequence
 	inca
@@ -765,6 +750,11 @@ WINRWAI	lda	PIA0D0		Test the joystick button...
 
 	sync			Wait for next hsync clock...
 
+	lda	TONECNT		Not doing full re-init, so update TONECNT too
+	inca
+	anda	#$03
+	sta	TONECNT
+
 	dec	1,s		Count-down to next flash...
 	bne	WINRWAI
 	dec	,s
@@ -796,7 +786,7 @@ WINRWA2	lda	PIA0D0		Test the joystick button...
 	anda	#$f7
 	sta	PIA1D1
 
-	jmp	EXEC		Restart the game!
+	jmp	GAMSTRT		Restart the game!
 
 *
 * Game lost
@@ -832,8 +822,33 @@ GOBTCLR	lda	PIA0D0		Test the joystick button...
 	bita	#$02
 	beq	GOBTCLR
 
+	lda	CURBOX		Deselect current box
+	lbsr	DSELECT
+
 	leas	3,s		Clean-up the stack...
-	jmp	EXEC		Restart the game!
+	jmp	GAMATTR		Restart the game!
+
+*
+* Initialize game variables
+*
+VARINIT	clr	SPNSTAT		Init spinner control variables
+	clr	SPNHIST
+	clr	SPNHIST+1
+	clr	SPNHIST+2
+
+	lbsr	SPNREAD		Read current spinner values
+	stb	SPNSTAT		Pre-load spinner state
+
+	clr	CURBOX		Init other variables
+	clr	BTNLAST
+	lda	#MVCINIT
+	sta	MOVCNTR
+	clr	TONELEN
+
+	ldd	#TONDLY1
+	std	TONEDLY
+
+	rts
 
 *
 * Constants
