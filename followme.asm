@@ -55,6 +55,9 @@ PBTNDLY	equ	$3120
 FAILDLY	equ	$5c1c
 FAILSND	equ	$bb
 
+WONDLY	equ	$013a
+WONDUR	equ	$044c
+
 	org	LOAD
 
 EXEC	equ	*
@@ -456,6 +459,7 @@ SEQLOOP	lda	,x+		Get next tone in sequence
 	pshs	a,x		Save A,X since they get clobbered...
 	lbsr	HILIGHT		Highlight color matching this tone...
 	lda	,s		Restore A from stack for input to TONEPLY
+	ldx	TONEDLY		Set tone duration
 	bsr	TONEPLY		Play it!
 	lda	,s		Restore A from stack for input to DSELECT
 	bsr	DSELECT		Un-highlight this color...
@@ -464,6 +468,7 @@ SEQLOOP	lda	,x+		Get next tone in sequence
 	dec	,s		Decrement remaining sequence length
 	beq	SEQPLEX		Exit if last tone played
 
+	ldd	#PPLYDLY	Set time counter for pause
 	bsr	PAUSPLY		Pause between tones...
 	bra	SEQLOOP		Play the next tone
 
@@ -473,25 +478,25 @@ SEQPLEX	leas	1,s		Clean-up stack
 *
 * Timed play of selected tone
 *
+*	X time counter, clobbered
 *	A input tone to play, clobbered
-*	X,B get clobbered
+*	B gets clobbered
 *
-TONEPLY	ldx	#BXDELAY	Set freq counter
+TONEPLY	pshs	x		Save time counter
+	inc	,s		Offset MSB value for proper delay counting
+
+	ldx	#BXDELAY	Set freq counter
 	ldb	a,x
 	pshs	b
 
-	ldd	TONEDLY		Set time counter
-	pshs	d
-	inc	,s		Offset MSB value for proper delay counting
-
-	ldb	2,s		Reset freq counter
+	ldb	,s		Reset freq counter
 	lda	PIA0D0		Clear hsync indicator...
 TNPLYLP	sync			Wait for next hsync clock...
 	lda	PIA0D0		Clear hsync indicator...
 
-	dec	1,s		Decrement time counter
+	dec	2,s		Decrement time counter
 	bne	TNPLYL1
-	dec	,s
+	dec	1,s
 	beq	TNPLYEX
 
 TNPLYL1	decb			Decrement freq counter
@@ -501,7 +506,7 @@ TNPLYL1	decb			Decrement freq counter
 	eora	#SQWAVE
 	sta	PIA1D1
 
-	ldb	2,s		Reset freq counter
+	ldb	,s		Reset freq counter
 	bra	TNPLYLP
 
 TNPLYEX	leas	3,s		Clean-up stack
@@ -510,10 +515,9 @@ TNPLYEX	leas	3,s		Clean-up stack
 *
 * Timed pause between tones
 *
-*	A,B get clobbered
+*	A,B time counter, clobbered
 *
-PAUSPLY	ldd	#PPLYDLY	Set time counter
-	pshs	d
+PAUSPLY	pshs	d		Save time counter
 	inc	,s		Offset MSB value for proper delay counting
 
 	lda	PIA0D0		Clear hsync indicator...
@@ -709,7 +713,55 @@ DRAWBLK	ldb	#$80
 *
 * Game won
 *
-GAMEWON	jmp	EXEC		Surely, we can do better?
+GAMEWON	lda	CURBOX		Get current selection
+	pshs	a		Save for later...
+
+	lbsr	HILIGHT		Highlight color matching this tone...
+	lda	,s		Restore A from stack for input to TONEPLY
+	ldx	#WONDLY		Set tone duration (yes, WONDLY is intended)
+	lbsr	TONEPLY		Play it!
+	lda	,s		Restore A from stack for input to DSELECT
+	lbsr	DSELECT		Un-highlight this color...
+	ldd	#WONDLY		Set time counter for pause
+	lbsr	PAUSPLY		Pause between tones...
+
+	lda	#$05		Set loop counter
+	pshs	a
+
+GMWLOOP	lda	1,s		Restore A from stack for input to HILIGHT
+	lbsr	HILIGHT		Highlight color matching this tone...
+	lda	1,s		Restore A from stack for input to TONEPLY
+	ldx	#WONDUR		Set tone duration
+	lbsr	TONEPLY		Play it!
+	lda	1,s		Restore A from stack for input to DSELECT
+	lbsr	DSELECT		Un-highlight this color...
+	ldd	#WONDLY		Set time counter for pause
+	lbsr	PAUSPLY		Pause between tones...
+
+	dec	,s		Decrement loop counter
+	bne	GMWLOOP
+
+	leas	2,s		Clean-up the stack
+
+	ldx	#SMSYSTR	Display game winning message!
+	ldy	#(VIDBASE+VIDSIZE/2-22)
+	lda	#SMSYLEN
+	bsr	DRAWSTR
+
+	ldx	#YUWNSTR
+	ldy	#(VIDBASE+VIDSIZE/2+11)
+	lda	#YUWNLEN
+	bsr	DRAWSTR
+
+WINRWAI	lda	PIA0D0		Test the joystick button...
+	bita	#$02
+	bne	WINRWAI		Wait for button press...
+
+WINRWA2	lda	PIA0D0		Test the joystick button...
+	bita	#$02
+	beq	WINRWA2		Wait for button release...
+
+	jmp	EXEC		Restart the game!
 
 *
 * Game lost
@@ -746,7 +798,7 @@ GOBTCLR	lda	PIA0D0		Test the joystick button...
 	beq	GOBTCLR
 
 	leas	3,s		Clean-up the stack...
-	jmp	EXEC
+	jmp	EXEC		Restart the game!
 
 *
 * Constants
@@ -774,6 +826,14 @@ PRBTEND	equ	*
 PRBTLEN	equ	(PRBTEND-PRBTSTR)
 
 *
+* Data for "YOU WIN!"
+*
+YUWNSTR	fcb	$20,$19,$0f,$15,$20,$17,$09,$0e
+	fcb	$21,$20
+YUWNEND	equ	*
+YUWNLEN	equ	(YUWNEND-YUWNSTR)
+
+*
 * Pre-allocated variables
 *
 SPNSTAT	rmb	1		Current spinner state value
@@ -786,11 +846,10 @@ CURBOX	rmb	1		Currently selected box
 MOVCNTR	rmb	1		Accumulated movement
 
 TONELEN	rmb	1		Length of tone sequence
-TONESEQ	rmb	32		Tone sequence data
-
-TONEDLY	rmb	2		Delay time between tone playback
+TONESEQ	rmb	32		Tone sequence data (TONECNT _must_ be next)
 TONECNT	rmb	1		Running counter used to generate tone seq
 
 TONECHK	rmb	1		Cursor used to keep track of tone matching
+TONEDLY	rmb	2		Delay time between tone playback
 
 	end	EXEC
