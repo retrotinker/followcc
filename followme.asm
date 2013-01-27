@@ -17,7 +17,7 @@
 	NAM	Follow Me
 	TTL	Simon-like game using a rotary controller
 
-LOAD	equ	$4000		Actual load address for binary
+LOAD	equ	$0e00		Actual load address for binary
 
 PIA0D0	equ	$ff00
 PIA0C0	equ	$ff01
