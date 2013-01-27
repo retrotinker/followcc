@@ -189,6 +189,7 @@ GMSQDL2	ldd	#TONDLY2	Load mid-length sequence delay
 GMSQDST	std	TONEDLY
 
 GAMCONT	puls	a
+
 	ldb	TONECNT		Use the free-running count value
 	ldx	#(TONESEQ-1)	Store it at the new offset in the sequence
 	stb	a,x
@@ -197,8 +198,7 @@ GAMCONT	puls	a
 
 	clr	TONECHK		Restart tone sequence checking
 
-* Draw initial selection outline
-	lda	CURBOX
+	lda	CURBOX		Draw initial selection outline
 	lbsr	SELECT
 
 CTLLOOP	lbsr	NEXTCHK		Synchronize to sample frequency
