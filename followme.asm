@@ -58,6 +58,8 @@ FAILSND	equ	$bb
 WONDLY	equ	$013a
 WONDUR	equ	$044c
 
+WINRDLY	equ	$1eb4
+
 	org	LOAD
 
 EXEC	equ	*
@@ -753,13 +755,46 @@ GMWLOOP	lda	1,s		Restore A from stack for input to HILIGHT
 	lda	#YUWNLEN
 	bsr	DRAWSTR
 
+	ldd	#WINRDLY
+	pshs	d
+	inc	,s		Offset MSB value for proper delay counting
+
 WINRWAI	lda	PIA0D0		Test the joystick button...
 	bita	#$02
-	bne	WINRWAI		Wait for button press...
+	beq	WINRWA2		Wait for button press...
+
+	sync			Wait for next hsync clock...
+
+	dec	1,s		Count-down to next flash...
+	bne	WINRWAI
+	dec	,s
+	bne	WINRWAI
+
+	lda	PIA1D1		Invert CSS signal
+	eora	#$08
+	sta	PIA1D1
+
+	ldd	#WINRDLY	Reset delay counter
+	std	,s
+	inc	,s		Offset MSB value for proper delay counting
+
+	bra	WINRWAI
 
 WINRWA2	lda	PIA0D0		Test the joystick button...
 	bita	#$02
 	beq	WINRWA2		Wait for button release...
+
+	ldy	#(VIDBASE+VIDSIZE/2-22)
+	lda	#SMSYLEN
+	lbsr	DRAWBLK
+
+	ldy	#(VIDBASE+VIDSIZE/2+11)
+	lda	#YUWNLEN
+	lbsr	DRAWBLK
+
+	lda	PIA1D1		Restore CSS value
+	anda	#$f7
+	sta	PIA1D1
 
 	jmp	EXEC		Restart the game!
 
