@@ -199,9 +199,17 @@ GAMCONT	puls	a
 
 CTLLOOP	lbsr	NEXTCHK		Synchronize to sample frequency
 
-	bsr	BTNREAD		Check for correct sequence done in BTNREAD
-	tsta			If button pressed, assume it was correct!
+	lbsr	BTNREAD		Check for correct sequence done in BTNREAD
+	tsta
 	bne	CTLSPIN		No button press, read the spinner
+
+	lda	TONECHK		Compare next tone in seq to current selection
+	ldx	#TONESEQ
+	ldb	CURBOX
+	cmpb	a,x
+	lbne	GAMEOVR		No match!  Game over...
+
+	lbsr	BTNPLAY		Otherwise, play tone for button
 
 	ldd	#MOVTIME	Reset move timeout counter
 	std	MOVTIMO
@@ -261,7 +269,7 @@ CTLLPEX	bra	CHKUART
 * Check for user break (development only)
 CHKUART	lda	$ff69		Check for serial port activity
 	bita	#$08
-	beq	CTLLOOP
+	lbeq	CTLLOOP
 	lda	$ff68
 
 *EXIT	jmp	$c135		Re-enter monitor (works on CoCo3?)
@@ -278,24 +286,30 @@ BTNREAD	lda	PIA0D0		Test the joystick button...
 	bita	#$02
 	bne	BTNEXIT
 
+	lda	#MVCINIT	Reset movement counter
+	sta	MOVCNTR
+
 	lda	CURBOX		Select box to highlight...
 	lbsr	HILIGHT		Indicate button was pressed...
 
-	lda	TONECHK		Compare next tone in seq to current selection
-	ldx	#TONESEQ
-	ldb	CURBOX
-	cmpb	a,x
-	bne	BTNFAIL		No match!
+	clra
 
-	ldx	#BXDELAY	Set freq counter
+BTNEXIT	rts
+
+*
+* Play tone while button is pressed
+*
+*	X,A,B get clobbered
+*
+BTNPLAY	ldx	#BXDELAY	Set freq counter
 	lda	CURBOX
 	ldb	a,x
 	pshs	b
 
-BTNPLAY	sync			Wait for next hsync clock...
+BTPLSYN	sync			Wait for next hsync clock...
 	lda	PIA0D0		Clear hsync indicator...
 	decb			Decrement freq counter
-	bne	BTNPLAY
+	bne	BTPLSYN
 
 BTNSND	lda	PIA1D1		Toggle square wave output...
 	eora	#SQWAVE
@@ -305,21 +319,13 @@ BTNSND	lda	PIA1D1		Toggle square wave output...
 
 	lda	PIA0D0		Check for button release...
 	bita	#$02
-	beq	BTNPLAY
+	beq	BTPLSYN
 
 	leas	1,s		Clean-up stack...
 	lda	CURBOX
 	lbsr	SELECT		Indicate button no longer pressed...
 
-	lda	#MVCINIT	Reset movement counter
-	sta	MOVCNTR
-
-	clra			Indicate button pressed
-
-BTNEXIT	rts
-
-BTNFAIL	leas	2,s		Simulate a return to clean-up stack...
-	jmp	GAMEOVR
+	rts
 
 *
 * Debounce the spinner, accumulate left/right movement
@@ -426,7 +432,7 @@ SPNRDEX	clr	PIA1D0		Reset selector switch inputs
 *	A gets clobbered
 *	B,X get clobbered if there is a timeout
 *
-NEXTCHK	dec	MOVTIMO+1
+NEXTCHK	dec	MOVTIMO+1	Check for timeout
 	bne	NXTCHK1
 	dec	MOVTIMO
 	bne	NXTCHK1
@@ -440,14 +446,15 @@ NEXTCHK	dec	MOVTIMO+1
 	sta	CURBOX		Save as CURBOX, so GAMEOVR deselects
 	lbsr	HILIGHT		Highlight next in sequence
 
-	lbra	BTNFAIL
+	leas	2,s		Simulate a return to clean-up stack...
+	jmp	GAMEOVR
 
-NXTCHK1	lda	TONECNT
+NXTCHK1	lda	TONECNT		Not timeout, advance TONECNT...
 	inca
 	anda	#$03
 	sta	TONECNT
 
-	tst	PIA0D0
+	tst	PIA0D0		...and wait...
 	sync
 	tst	PIA0D0
 	sync
