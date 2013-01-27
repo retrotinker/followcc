@@ -7,3 +7,5 @@
 # Build products
 *.bin
 *.s19
+*.ram
+*.wav
