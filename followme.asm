@@ -42,11 +42,13 @@ WHITE	equ	$cf
 BLACK	equ	$80
 
 MVCINIT	equ	$40
-MVCDLTA	equ	$05
+MVCDLTA	equ	$0a
 MVCTMIN	equ	MVCINIT-MVCDLTA
 MVCTMAX	equ	MVCINIT+MVCDLTA
 
-TONEDLY	equ	$19ca
+TONDLY1	equ	$19ca
+TONDLY2	equ	$13a6
+TONDLY3	equ	$0d82
 PPLYDLY	equ	$0312
 PBTNDLY	equ	$3120
 
@@ -80,6 +82,9 @@ EXEC	equ	*
 	sta	MOVCNTR
 	clr	TONELEN
 	clr	TONECNT
+
+	ldd	#TONDLY1
+	std	TONEDLY
 
 * Init timing sources
 	lda	$ff03		Disable vsync interrupt generation
@@ -167,6 +172,23 @@ GAMLOOP	lda	TONELEN		Add a tone to the sequence
 	lbge	GAMEWON		Player wins!
 	sta	TONELEN		Otherwise, save new sequence length
 
+	pshs	a		Save sequence offset
+	cmpa	#$0d		Check for shortest sequence delay
+	bgt	GMSQDL3
+
+	cmpa	#$05		Check for mid-length sequence delay
+	bgt	GMSQDL2
+
+	bra	GAMCONT
+
+GMSQDL3	ldd	#TONDLY3	Load shortest sequence delay
+	bra	GMSQDST
+
+GMSQDL2	ldd	#TONDLY2	Load mid-length sequence delay
+
+GMSQDST	std	TONEDLY
+
+GAMCONT	puls	a
 	ldb	TONECNT		Use the free-running count value
 	ldx	#(TONESEQ-1)	Store it at the new offset in the sequence
 	stb	a,x
@@ -458,7 +480,7 @@ TONEPLY	ldx	#BXDELAY	Set freq counter
 	ldb	a,x
 	pshs	b
 
-	ldd	#TONEDLY	Set time counter
+	ldd	TONEDLY		Set time counter
 	pshs	d
 	inc	,s		Offset MSB value for proper delay counting
 
@@ -766,6 +788,7 @@ MOVCNTR	rmb	1		Accumulated movement
 TONELEN	rmb	1		Length of tone sequence
 TONESEQ	rmb	32		Tone sequence data
 
+TONEDLY	rmb	2		Delay time between tone playback
 TONECNT	rmb	1		Running counter used to generate tone seq
 
 TONECHK	rmb	1		Cursor used to keep track of tone matching
