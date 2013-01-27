@@ -185,8 +185,6 @@ CTLLOOP	lbsr	NEXTCHK		Synchronize to sample frequency
 	tsta			If button pressed, assume it was correct!
 	bne	CTLSPIN		No button press, read the spinner
 
-	lbsr	PAUSBTN		Pause after button press
-
 	lda	TONECHK		Increment sequence check cursor
 	inca
 	sta	TONECHK
@@ -196,6 +194,8 @@ CTLLOOP	lbsr	NEXTCHK		Synchronize to sample frequency
 
 	lda	CURBOX		Deselect current box
 	lbsr	DSELECT
+
+	lbsr	PAUSBTN		Pause after button press
 	bra	GAMLOOP		Now, extend sequence and continue
 
 CTLSPIN	lbsr	SPNDBNC
@@ -426,7 +426,6 @@ NEXTCHK	lda	TONECNT
 *
 *
 SEQPLAY	lda	TONELEN		Get current sequence length
-	beq	SEQPLEX		Exit if zero-length sequence
 	pshs	a
 
 	ldx	#TONESEQ
@@ -438,15 +437,16 @@ SEQLOOP	lda	,x+		Get next tone in sequence
 	bsr	TONEPLY		Play it!
 	lda	,s		Restore A from stack for input to DSELECT
 	bsr	DSELECT		Un-highlight this color...
-	bsr	PAUSPLY		Pause between tones...
 	puls	a,x
 
 	dec	,s		Decrement remaining sequence length
-	bne	SEQLOOP		Continue if not done
+	beq	SEQPLEX		Exit if last tone played
 
-	leas	1,s		Clean-up stack
+	bsr	PAUSPLY		Pause between tones...
+	bra	SEQLOOP		Play the next tone
 
-SEQPLEX	rts
+SEQPLEX	leas	1,s		Clean-up stack
+	rts
 
 *
 * Timed play of selected tone
