@@ -60,6 +60,8 @@ WONDUR	equ	$044c
 
 WINRDLY	equ	$1eb4
 
+MOVTIME	equ	$2000
+
 	org	LOAD
 
 EXEC	equ	*
@@ -138,7 +140,11 @@ STRTWAI	lda	PIA0D0		Test the joystick button...
 	bita	#$02
 	beq	STRTWA2		Wait for button release...
 
-	lbsr	NEXTCHK		Wait for next line
+	lda	TONECNT		Pre-seed TONECNT
+	inca
+	anda	#$03
+	sta	TONECNT
+
 	bra	STRTWAI		Repeat the loop
 
 STRTWA2	lda	PIA0D0		Test the joystick button...
@@ -196,6 +202,9 @@ CTLLOOP	lbsr	NEXTCHK		Synchronize to sample frequency
 	bsr	BTNREAD		Check for correct sequence done in BTNREAD
 	tsta			If button pressed, assume it was correct!
 	bne	CTLSPIN		No button press, read the spinner
+
+	ldd	#MOVTIME	Reset move timeout counter
+	std	MOVTIMO
 
 	lda	TONECHK		Increment sequence check cursor
 	inca
@@ -412,10 +421,28 @@ SPNRDEX	clr	PIA1D0		Reset selector switch inputs
 
 *
 * Wait for next hsync-clocked controller check term
+*	-- also check for input timeout
 *
 *	A gets clobbered
+*	B,X get clobbered if there is a timeout
 *
-NEXTCHK	lda	TONECNT
+NEXTCHK	dec	MOVTIMO+1
+	bne	NXTCHK1
+	dec	MOVTIMO
+	bne	NXTCHK1
+
+	lda	CURBOX		Deselect current box
+	lbsr	DSELECT
+
+	ldb	TONECHK		Get next in sequence
+	ldx	#TONESEQ
+	lda	b,x
+	sta	CURBOX		Save as CURBOX, so GAMEOVR deselects
+	lbsr	HILIGHT		Highlight next in sequence
+
+	lbra	BTNFAIL
+
+NXTCHK1	lda	TONECNT
 	inca
 	anda	#$03
 	sta	TONECNT
@@ -848,6 +875,9 @@ VARINIT	clr	SPNSTAT		Init spinner control variables
 	ldd	#TONDLY1
 	std	TONEDLY
 
+	ldd	#MOVTIME	Reset move timeout counter
+	std	MOVTIMO
+
 	rts
 
 *
@@ -901,5 +931,7 @@ TONECNT	rmb	1		Running counter used to generate tone seq
 
 TONECHK	rmb	1		Cursor used to keep track of tone matching
 TONEDLY	rmb	2		Delay time between tone playback
+
+MOVTIMO	rmb	2		Timeout counter for next move
 
 	end	EXEC
