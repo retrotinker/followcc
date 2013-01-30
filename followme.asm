@@ -276,6 +276,42 @@ KYBDCK3	lda	#$f7		Check for 's'
 	sta	PIA0D1
 	lda	PIA0D0
 	bita	#$04
+	bne	KYBDCK4
+
+	lda	#$03
+	bra	KYBDSEL
+
+KYBDCK4	lda	#$7f		Check for '7' ('w' on Dragon)
+	sta	PIA0D1
+	lda	PIA0D0
+	bita	#$10
+	bne	KYBDCK5
+
+	lda	#$00
+	bra	KYBDSEL
+
+KYBDCK5	lda	#$df		Check for 'u' ('e' on Dragon)
+	sta	PIA0D1
+	lda	PIA0D0
+	bita	#$04
+	bne	KYBDCK6
+
+	lda	#$01
+	bra	KYBDSEL
+
+KYBDCK6	lda	#$ef		Check for 't' ('d' on Dragon)
+	sta	PIA0D1
+	lda	PIA0D0
+	bita	#$04
+	bne	KYBDCK7
+
+	lda	#$02
+	bra	KYBDSEL
+
+KYBDCK7	lda	#$f7		Check for '3' ('s' on Dragon)
+	sta	PIA0D1
+	lda	PIA0D0
+	bita	#$10
 	bne	KYBDCKX
 
 	lda	#$03
