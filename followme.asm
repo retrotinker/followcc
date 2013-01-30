@@ -140,6 +140,14 @@ STRTWAI	lda	PIA0D0		Test the joystick button...
 	bita	#$02
 	beq	STRTWA2		Wait for button release...
 
+	clr	PIA0D1		Check for key press
+	lda	PIA0D0
+	ldb	#$ff		Reset keyboard
+	stb	PIA0D1
+	anda	#$7f
+	cmpa	#$7f
+	bne	STRTNOW		Start the game
+
 	lda	TONECNT		Pre-seed TONECNT
 	inca
 	anda	#$03
@@ -152,7 +160,7 @@ STRTWA2	lda	PIA0D0		Test the joystick button...
 	beq	STRTWA2
 
 * Erase game start message
-	ldy	#(VIDBASE+VIDSIZE/2-22)
+STRTNOW	ldy	#(VIDBASE+VIDSIZE/2-22)
 	lda	#SMSYLEN
 	lbsr	DRAWBLK
 
@@ -231,11 +239,106 @@ CTLSPIN	lbsr	SPNDBNC
 
 	lda	#MVCTMIN
 	cmpa	MOVCNTR
-	bgt	LMOV_CW
+	lbgt	LMOV_CW
 	lda	#MVCTMAX
 	cmpa	MOVCNTR
-	ble	LMOVCCW
+	lble	LMOVCCW
 
+* Check for keyboard input -- last resort!!
+KYBDCHK	lda	#$7f		Check for 'w'
+	sta	PIA0D1
+	lda	PIA0D0
+	bita	#$04
+	bne	KYBDCK1
+
+	lda	#$00
+	bra	KYBDSEL
+
+KYBDCK1	lda	#$df		Check for 'e'
+	sta	PIA0D1
+	lda	PIA0D0
+	bita	#$01
+	bne	KYBDCK2
+
+	lda	#$01
+	bra	KYBDSEL
+
+KYBDCK2	lda	#$ef		Check for 'd'
+	sta	PIA0D1
+	lda	PIA0D0
+	bita	#$01
+	bne	KYBDCK3
+
+	lda	#$02
+	bra	KYBDSEL
+
+KYBDCK3	lda	#$f7		Check for 's'
+	sta	PIA0D1
+	lda	PIA0D0
+	bita	#$04
+	bne	KYBDCKX
+
+	lda	#$03
+*	bra	KYBDSEL
+
+KYBDSEL	pshs	a		DSELECT clobbers A
+	lda	CURBOX		Deselect current box
+	lbsr	DSELECT
+
+	puls	a		Restore A
+	sta	CURBOX		Select new box
+	lbsr	HILIGHT		Indicate key was pressed...
+
+	lda	TONECHK		Compare next tone in seq to current selection
+	ldx	#TONESEQ
+	ldb	CURBOX
+	cmpb	a,x
+	lbne	GAMEOVR		No match!  Game over...
+
+	ldx	#BXDELAY	Set freq counter
+	lda	CURBOX
+	ldb	a,x
+	pshs	b
+
+KYBDSYN	sync			Wait for next hsync clock...
+	lda	PIA0D0		Clear hsync indicator...
+	decb			Decrement freq counter
+	bne	KYBDSYN
+
+	lda	PIA1D1		Toggle square wave output...
+	eora	#SQWAVE
+	sta	PIA1D1
+
+	ldb	,s		Reset freq counter
+
+	clr	PIA0D1		Check for key release
+	lda	PIA0D0
+	anda	#$7f
+	cmpa	#$7f
+	bne	KYBDSYN
+
+KYBDRLS	leas	1,s		Clean-up stack...
+	lda	CURBOX
+	lbsr	SELECT		Indicate key no longer pressed...
+
+	ldd	#MOVTIME	Reset move timeout counter
+	std	MOVTIMO
+
+	lda	TONECHK		Increment sequence check cursor
+	inca
+	sta	TONECHK
+
+	cmpa	TONELEN		Compare sequence check to sequence length
+	blt	KYBDCKX		Not done, continue checking...
+
+	lda	CURBOX		Deselect current box
+	lbsr	DSELECT
+
+	lbsr	PAUSBTN		Pause after key press
+	lbra	GAMLOOP		Now, extend sequence and continue
+
+KYBDCKX	lda	#$ff
+	sta	PIA0D1
 	bra	CTLLPEX
 
 LMOV_CW	lda	CURBOX
