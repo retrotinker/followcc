@@ -207,7 +207,7 @@ GAMCONT	puls	a
 
 CTLLOOP	lbsr	NEXTCHK		Synchronize to sample frequency
 
-	lbsr	BTNREAD		Check for correct sequence done in BTNREAD
+	lbsr	BTNREAD		Check for button press
 	tsta
 	bne	CTLSPIN		No button press, read the spinner
 
