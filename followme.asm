@@ -367,16 +367,7 @@ LMOVCCW	lda	CURBOX
 
 *	bra	CTLLPEX
 
-CTLLPEX	bra	CHKUART
-
-* Check for user break (development only)
-CHKUART	lda	$ff69		Check for serial port activity
-	bita	#$08
-	lbeq	CTLLOOP
-	lda	$ff68
-
-*EXIT	jmp	$c135		Re-enter monitor (works on CoCo3?)
-EXIT	jmp	[$fffe]		Re-enter monitor
+CTLLPEX	lbra	CTLLOOP
 
 *
 * Test the button status and react to changes
