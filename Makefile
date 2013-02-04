@@ -19,9 +19,10 @@ all: $(TARGETS)
 followme.wav: followme.ram
 	makewav -r -nFOLLOWME -2 -a -d0x000e -e0x000e -o$@ $<
 
-followme.dsk: followme.bin
+followme.dsk: followme.bin COPYING
 	decb dskini followme.dsk
 	decb copy followme.bin followme.dsk,FOLLOWME.BIN
+	decb copy -3 -a -l COPYING followme.dsk,COPYING
 
 clean:
 	$(RM) $(TARGETS) $(EXTRA)
