@@ -2,7 +2,7 @@
 
 CFLAGS=-Wall
 
-TARGETS=followme.bin followme.s19 followme.wav
+TARGETS=followme.bin followme.s19 followme.wav followme.dsk
 EXTRA=followme.ram
 
 all: $(TARGETS)
@@ -18,6 +18,10 @@ all: $(TARGETS)
 
 followme.wav: followme.ram
 	makewav -r -nFOLLOWME -2 -a -d0x000e -e0x000e -o$@ $<
+
+followme.dsk: followme.bin
+	decb dskini followme.dsk
+	decb copy followme.bin followme.dsk,FOLLOWME.BIN
 
 clean:
 	$(RM) $(TARGETS) $(EXTRA)
