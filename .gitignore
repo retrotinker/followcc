@@ -5,7 +5,8 @@
 \#*#
 
 # Build products
-*.bin
-*.s19
-*.ram
-*.wav
+followme.bin
+followme.s19
+followme.ram
+followme.wav
+followme.dsk
