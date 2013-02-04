@@ -21,7 +21,7 @@ followme.wav: followme.ram
 
 followme.dsk: followme.bin COPYING
 	decb dskini followme.dsk
-	decb copy followme.bin followme.dsk,FOLLOWME.BIN
+	decb copy -2 -b followme.bin followme.dsk,FOLLOWME.BIN
 	decb copy -3 -a -l COPYING followme.dsk,COPYING
 
 clean:
