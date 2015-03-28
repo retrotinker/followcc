@@ -20,6 +20,7 @@ followme.wav: followme.ram
 	makewav -r -nFOLLOWME -2 -a -d0x000e -e0x000e -o$@ $<
 
 followme.dsk: followme.bin COPYING
+	rm -f followme.dsk
 	decb dskini followme.dsk
 	decb copy -2 -b followme.bin followme.dsk,FOLLOWME.BIN
 	decb copy -3 -a -l COPYING followme.dsk,COPYING
