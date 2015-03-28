@@ -7,6 +7,11 @@
 # Build products
 followme.bin
 followme.s19
-followme.ram
 followme.wav
 followme.dsk
+followme.ccc
+followme.2k
+followme.4k
+followme.8k
+followme.16k
+followme.32k

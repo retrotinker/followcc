@@ -17,7 +17,12 @@
 	NAM	Follow Me
 	TTL	Simon-like game using a rotary controller
 
+	ifdef	ROM
+LOAD	equ	$c000		Actual load address for binary
+DATA	equ	$0600		Actual base address for variables
+	else
 LOAD	equ	$0e00		Actual load address for binary
+	endif
 
 PIA0D0	equ	$ff00
 PIA0C0	equ	$ff01
@@ -1053,6 +1058,9 @@ YUWNLEN	equ	(YUWNEND-YUWNSTR)
 *
 * Pre-allocated variables
 *
+	ifdef	ROM
+	org	DATA
+	endif
 SPNSTAT	rmb	1		Current spinner state value
 SPNHIST	rmb	3		Historical spinner readings
 
