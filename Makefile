@@ -8,13 +8,13 @@ EXTRA=followme.ram
 all: $(TARGETS)
 
 %.bin: %.asm
-	mamou -mb -tb -l -y -o$@ $<
+	lwasm -9 -l -f decb -o $@ $<
 
 %.s19: %.asm
-	mamou -mb -ts -l -y -o$@ $<
+	lwasm -9 -l -f srec -o $@ $<
 
 %.ram: %.asm
-	mamou -mr -tb -l -y -o$@ $<
+	lwasm -9 -l -f raw -o $@ $<
 
 followme.wav: followme.ram
 	makewav -r -nFOLLOWME -2 -a -d0x000e -e0x000e -o$@ $<
