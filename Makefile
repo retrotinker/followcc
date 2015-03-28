@@ -3,7 +3,6 @@
 CFLAGS=-Wall
 
 TARGETS=followme.bin followme.s19 followme.wav followme.dsk
-EXTRA=followme.ram
 
 all: $(TARGETS)
 
@@ -13,11 +12,10 @@ all: $(TARGETS)
 %.s19: %.asm
 	lwasm -9 -l -f srec -o $@ $<
 
-%.ram: %.asm
-	lwasm -9 -l -f raw -o $@ $<
-
-followme.wav: followme.ram
-	makewav -r -nFOLLOWME -2 -a -d0x000e -e0x000e -o$@ $<
+%.wav: %.bin
+	cecb bulkerase $@
+	cecb copy -2 -b -g $< \
+		$(@),$$(echo $< | cut -c1-8 | tr [:lower:] [:upper:])
 
 followme.dsk: followme.bin COPYING
 	rm -f $@
