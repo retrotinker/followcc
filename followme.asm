@@ -289,7 +289,7 @@ KYBDRLS	leas	1,s		Clean-up stack...
 	lbsr	LOLIGHT
 
 	lbsr	PAUSBTN		Pause after key press
-	lbra	GAMLOOP		Now, extend sequence and continue
+	jmp	GAMLOOP		Now, extend sequence and continue
 
 KYBDCKX	lda	#$ff
 	sta	PIA0D1
