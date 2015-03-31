@@ -98,33 +98,14 @@ EXEC	equ	*
 	ora	#$04
 	sta	PIA1C1
 
+* Show title screen
+	jsr	TTLSCRN
+
 * Clear the screen
 	lbsr	CLRSCN
 
-* Draw the pretty boxes...
-	ldy	#BXLOCAT
-	ldx	0,y
-	ldy	#BXCOLOR
-	lda	0,y
-	lbsr	DRAWBOX
-
-	ldy	#BXLOCAT
-	ldx	2,y
-	ldy	#BXCOLOR
-	lda	1,y
-	lbsr	DRAWBOX
-
-	ldy	#BXLOCAT
-	ldx	4,y
-	ldy	#BXCOLOR
-	lda	2,y
-	lbsr	DRAWBOX
-
-	ldy	#BXLOCAT
-	ldx	6,y
-	ldy	#BXCOLOR
-	lda	3,y
-	lbsr	DRAWBOX
+* Draw the colored squares
+	jsr	DRWBOXS
 
 * Display game start message
 GAMATTR	ldx	#SMSYSTR
@@ -574,6 +555,37 @@ DRBLOOP	sta	,x+		Store character, increment X
 	rts
 
 *
+* Draw the pretty boxes...
+*
+*	A,X,Y clobbered
+*
+DRWBOXS	ldy	#BXLOCAT
+	ldx	0,y
+	ldy	#BXCOLOR
+	lda	0,y
+	lbsr	DRAWBOX
+
+	ldy	#BXLOCAT
+	ldx	2,y
+	ldy	#BXCOLOR
+	lda	1,y
+	lbsr	DRAWBOX
+
+	ldy	#BXLOCAT
+	ldx	4,y
+	ldy	#BXCOLOR
+	lda	2,y
+	lbsr	DRAWBOX
+
+	ldy	#BXLOCAT
+	ldx	6,y
+	ldy	#BXCOLOR
+	lda	3,y
+	lbsr	DRAWBOX
+
+	rts
+
+*
 * Clear the screen
 *
 *	X gets set to #VIDBASE
@@ -790,6 +802,48 @@ CLRROND	pshs	d,x
 	puls	d,x,pc
 
 *
+* Show the title screen
+*
+TTLSCRN	jsr	CLRSCN
+
+	jsr	DRWBOXS
+
+	ldx	#FLWCSTR	Display the program name
+	ldy	#(VIDBASE+3*VIDLINE+9)
+	lda	#FLWCSLN
+	jsr	DRAWSTR
+
+	ldx	#CPYSTR1	Display the copyright info
+	ldy	#(VIDBASE+7*VIDLINE+10)
+	lda	#CPYS1LN
+	jsr	DRAWSTR
+
+	ldx	#CPYSTR2
+	ldy	#(VIDBASE+8*VIDLINE+9)
+	lda	#CPYS2LN
+	jsr	DRAWSTR
+
+	ldx	#CPYSTR3
+	ldy	#(VIDBASE+9*VIDLINE+11)
+	lda	#CPYS3LN
+	jsr	DRAWSTR
+
+	ldx	#PRAKSTR
+	ldy	#(VIDBASE+14*VIDLINE+8)
+	lda	#PRAKLEN
+	lbsr	DRAWSTR
+
+	ldx	#CONTSTR
+	ldy	#(VIDBASE+15*VIDLINE+9)
+	lda	#CONTLEN
+	lbsr	DRAWSTR
+
+.1?	jsr	[$a000]
+	beq	.1?
+
+	rts
+
+*
 * Initialize game variables
 *
 VARINIT	clr	CURBOX		Init other variables
@@ -828,6 +882,54 @@ PRBTSTR	fcb	$20,$10,$12,$05,$13,$13,$20,$14
 	fcb	$0e,$20
 PRBTEND	equ	*
 PRBTLEN	equ	(PRBTEND-PRBTSTR)
+
+*
+* Data for "FOLLOW COCO!"
+*
+FLWCSTR	fcb	$20,$06,$0f,$0c,$0c,$0f,$17,$20
+	fcb	$03,$0f,$03,$0f,$21,$20
+FLWCSND	equ	*
+FLWCSLN	equ	(FLWCSND-FLWCSTR)
+
+*
+* Data for "PROGRAM BY"
+*
+CPYSTR1	fcb	$20,$10,$12,$0f,$07,$12,$01,$0d
+	fcb	$20,$02,$19,$20
+CPYS1ND	equ	*
+CPYS1LN	equ	(CPYS1ND-CPYSTR1)
+
+*
+* Data for "J.W.LINVILLE"
+*
+CPYSTR2	fcb	$20,$0a,$2e,$17,$2e,$0c,$09,$0e
+	fcb	$16,$09,$0c,$0c,$05,$20
+CPYS2ND	equ	*
+CPYS2LN	equ	(CPYS2ND-CPYSTR2)
+
+*
+* Data for "(C) 2015"
+*
+CPYSTR3	fcb	$20,$28,$03,$29,$20,$32,$30,$31
+	fcb	$35,$20
+CPYS3ND	equ	*
+CPYS3LN	equ	(CPYS3ND-CPYSTR3)
+
+*
+* Data for "PRESS ANY KEY"
+*
+PRAKSTR	fcb	$20,$10,$12,$05,$13,$13,$20,$01
+	fcb	$0e,$19,$20,$0b,$05,$19,$20,$20
+PRAKEND	equ	*
+PRAKLEN	equ	(PRAKEND-PRAKSTR)
+
+*
+* Data for "TO CONTINUE"
+*
+CONTSTR	fcb	$20,$14,$0f,$20,$03,$0f,$0e,$14
+	fcb	$09,$0e,$15,$05,$20,$20
+CONTEND	equ	*
+CONTLEN	equ	(CONTEND-CONTSTR)
 
 *
 * Data for "YOU WIN!"
