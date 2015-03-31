@@ -98,14 +98,13 @@ EXEC	equ	*
 	ora	#$04
 	sta	PIA1C1
 
+* TONECNT is a special case, should be initialized here...
+	clr	TONECNT
+
 * Show title screen
 	jsr	TTLSCRN
 
-* Clear the screen
-	lbsr	CLRSCN
-
-* Draw the colored squares
-	jsr	DRWBOXS
+	jmp	STRTNOW
 
 * Display game start message
 GAMATTR	ldx	#SMSYSTR
@@ -145,9 +144,6 @@ GAMATTR	ldx	#SMSYSTR
 	leax	96,x
 	leax	64,x
 	sta	,x
-
-* TONECNT is a special case, should be initialized here...
-	clr	TONECNT
 
 * Wait for button press/release to start game
 STRTWAI	lda	TONECNT		Pre-seed TONECNT
@@ -838,8 +834,16 @@ TTLSCRN	jsr	CLRSCN
 	lda	#CONTLEN
 	lbsr	DRAWSTR
 
-.1?	jsr	[$a000]
+.1?	lda	TONECNT		Pre-seed TONECNT
+	inca
+	anda	#$03
+	sta	TONECNT
+	jsr	[$a000]
 	beq	.1?
+
+	lbsr	CLRSCN		Clear the screen
+
+	jsr	DRWBOXS		Draw the colored squares
 
 	rts
 
