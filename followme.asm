@@ -678,7 +678,7 @@ WINRWA2	lda	PIA0D0		Test the joystick button...
 	anda	#$f7
 	sta	PIA1D1
 
-	jmp	GAMSTRT		Restart the game!
+	jmp	GAMATTR		Restart the game!
 
 *
 * Game lost
