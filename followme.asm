@@ -137,6 +137,34 @@ GAMATTR	ldx	#SMSYSTR
 	lda	#PRBTLEN
 	lbsr	DRAWSTR
 
+	ldy	#BXLOCAT	Restore the pristinely colored boxes
+	ldx	0,y
+	ldy	#BXCOLOR
+	lda	0,y
+	sta	,x
+
+	ldy	#BXLOCAT
+	ldx	2,y
+	ldy	#BXCOLOR
+	lda	1,y
+	sta	11,x
+
+	ldy	#BXLOCAT
+	ldx	4,y
+	ldy	#BXCOLOR
+	lda	2,y
+	leax	96,x
+	leax	64,x
+	sta	11,x
+
+	ldy	#BXLOCAT
+	ldx	6,y
+	ldy	#BXCOLOR
+	lda	3,y
+	leax	96,x
+	leax	64,x
+	sta	,x
+
 * TONECNT is a special case, should be initialized here...
 	clr	TONECNT
 
@@ -172,6 +200,27 @@ STRTNOW	ldy	#(VIDBASE+VIDSIZE/2-22)
 	ldy	#(VIDBASE+VIDSIZE/2+7)
 	lda	#PRBTLEN
 	lbsr	DRAWBLK
+
+	ldy	#BXLOCAT	Label the keys that match the boxes
+	ldx	0,y
+	lda	#('W'-$40)
+	sta	,x
+
+	ldx	2,y
+	lda	#('E'-$40)
+	sta	11,x
+
+	ldx	4,y
+	leax	96,x
+	leax	64,x
+	lda	#('D'-$40)
+	sta	11,x
+
+	ldx	6,y
+	leax	96,x
+	leax	64,x
+	lda	#('S'-$40)
+	sta	,x
 
 GAMSTRT	lbsr	VARINIT
 
