@@ -112,9 +112,9 @@ GAMATTR	ldx	#SMSYSTR
 	lda	#SMSYLEN
 	lbsr	DRAWSTR
 
-	ldx	#PRBTSTR
-	ldy	#(VIDBASE+VIDSIZE/2+7)
-	lda	#PRBTLEN
+	ldx	#PRK1STR
+	ldy	#(VIDBASE+VIDSIZE/2+8)
+	lda	#PRK1LEN
 	lbsr	DRAWSTR
 
 	ldy	#BXLOCAT	Restore the pristinely colored boxes
@@ -159,8 +159,8 @@ STRTNOW	ldy	#(VIDBASE+VIDSIZE/2-22)
 	lda	#SMSYLEN
 	lbsr	DRAWBLK
 
-	ldy	#(VIDBASE+VIDSIZE/2+7)
-	lda	#PRBTLEN
+	ldy	#(VIDBASE+VIDSIZE/2+8)
+	lda	#PRK1LEN
 	lbsr	DRAWBLK
 
 	ldy	#BXLOCAT	Label the keys that match the boxes
@@ -879,13 +879,12 @@ SMSYEND	equ	*
 SMSYLEN	equ	(SMSYEND-SMSYSTR)
 
 *
-* Data for "PRESS THE BUTTON"
+* Data for "PRESS ANY KEY!"
 *
-PRBTSTR	fcb	$20,$10,$12,$05,$13,$13,$20,$14
-	fcb	$08,$05,$20,$02,$15,$14,$14,$0f
-	fcb	$0e,$20
-PRBTEND	equ	*
-PRBTLEN	equ	(PRBTEND-PRBTSTR)
+PRK1STR	fcb	$20,$10,$12,$05,$13,$13,$20,$01
+	fcb	$0e,$19,$20,$0b,$05,$19,$21,$20
+PRK1END	equ	*
+PRK1LEN	equ	(PRK1END-PRK1STR)
 
 *
 * Data for "FOLLOW COCO!"
