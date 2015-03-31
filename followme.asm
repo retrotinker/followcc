@@ -55,7 +55,7 @@ TONDLY1	equ	$19ca
 TONDLY2	equ	$13a6
 TONDLY3	equ	$0d82
 PPLYDLY	equ	$0312
-PBTNDLY	equ	$3120
+PAUSCNT	equ	$49b0
 
 FAILDLY	equ	$5c1c
 FAILSND	equ	$bb
@@ -209,7 +209,12 @@ STRTNOW	ldy	#(VIDBASE+VIDSIZE/2-22)
 
 GAMSTRT	lbsr	VARINIT
 
-GAMLOOP	lda	TONELEN		Add a tone to the sequence
+GAMLOOP	lda	RONDNUM		Count/display the current round
+	inca
+	daa
+	sta	RONDNUM
+
+	lda	TONELEN		Add a tone to the sequence
 	inca
 	cmpa	#(TONECNT-TONESEQ)	Check for completed sequence
 	lbge	GAMEWON		Player wins!
@@ -236,6 +241,12 @@ GAMCONT	puls	a
 	ldb	TONECNT		Use the free-running count value
 	ldx	#(TONESEQ-1)	Store it at the new offset in the sequence
 	stb	a,x
+
+	jsr	DISROND		Show the round counter
+
+	jsr	PAUSDLY		Let the user see it
+
+	jsr	CLRROND		Clear the round counter
 
 	lbsr	SEQPLAY
 
@@ -269,7 +280,8 @@ KYBDCK3	cmpa	#'K'
 	lda	#$03
 *	bra	KYBDSEL
 
-KYBDSEL	pshs	a		LOLIGHT clobbers A
+KYBDSEL
+	pshs	a		LOLIGHT clobbers A
 	lda	CURBOX		Deselect current box
 	lbsr	LOLIGHT
 
@@ -322,7 +334,6 @@ KYBDRLS	leas	1,s		Clean-up stack...
 	lda	CURBOX		Deselect current box
 	lbsr	LOLIGHT
 
-	lbsr	PAUSBTN		Pause after key press
 	jmp	GAMLOOP		Now, extend sequence and continue
 
 KYBDCKX	lda	#$ff
@@ -457,11 +468,11 @@ PPLYLOP	lda	PIA0D0		Clear hsync indicator...
 	rts
 
 *
-* Timed pause after button press
+* Timed pause
 *
 *	A,B get clobbered
 *
-PAUSBTN	ldd	#PBTNDLY	Set time counter
+PAUSDLY	ldd	#PAUSCNT	Set time counter
 	pshs	d
 
 PBTNLOP	lda	PIA0D0		Clear hsync indicator...
@@ -741,11 +752,49 @@ GOBTCLR	lda	CURBOX		Deselect current box
 	jmp	GAMATTR		Restart the game!
 
 *
+* Display round number
+*
+DISROND	pshs	a,x
+
+	ldx	#RONDSTR
+	ldy	#(VIDBASE+15*VIDLINE+12)
+	lda	#RONDLEN
+	lbsr	DRAWSTR
+
+	ldx	#(VIDBASE+15*VIDLINE+18)
+	lda	RONDNUM
+	pshs	a
+	anda	#$f0
+	lsra
+	lsra
+	lsra
+	lsra
+	adda	#$30
+	sta	,x+
+	puls	a
+	anda	#$0f
+	adda	#$30
+	sta	,x
+	puls	a,x,pc
+
+*
+* Clear round number
+*
+CLRROND	pshs	d,x
+	ldx	#(VIDBASE+15*VIDLINE+12)
+	lda	#$80
+	ldb	#$08
+.1?	sta	,x+
+	decb
+	bne	.1?
+	puls	d,x,pc
+
+*
 * Initialize game variables
 *
-VARINIT
-	clr	CURBOX		Init other variables
+VARINIT	clr	CURBOX		Init other variables
 	clr	TONELEN
+	clr	RONDNUM
 
 	ldd	#TONDLY1
 	std	TONEDLY
@@ -789,6 +838,13 @@ YUWNEND	equ	*
 YUWNLEN	equ	(YUWNEND-YUWNSTR)
 
 *
+* Data for "ROUND "
+*
+RONDSTR	fcb	$12,$0f,$15,$0e,$04,$20
+RONDEND	equ	*
+RONDLEN	equ	(RONDEND-RONDSTR)
+
+*
 * Pre-allocated variables
 *
 	ifdef	ROM
@@ -804,5 +860,7 @@ TONECHK	rmb	1		Cursor used to keep track of tone matching
 TONEDLY	rmb	2		Delay time between tone playback
 
 MOVTIMO	rmb	2		Timeout counter for next move
+
+RONDNUM	rmb	1		Counter of current round
 
 	end	EXEC
