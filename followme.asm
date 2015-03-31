@@ -207,9 +207,6 @@ GAMCONT	puls	a
 
 	clr	TONECHK		Restart tone sequence checking
 
-	lda	CURBOX		Draw initial selection outline
-	lbsr	SELECT
-
 CTLLOOP	lbsr	NEXTCHK		Synchronize to sample frequency
 
 KYBDCHK	jsr	[$a000]
@@ -238,9 +235,9 @@ KYBDCK3	cmpa	#'S'
 	lda	#$03
 *	bra	KYBDSEL
 
-KYBDSEL	pshs	a		DSELECT clobbers A
+KYBDSEL	pshs	a		LOLIGHT clobbers A
 	lda	CURBOX		Deselect current box
-	lbsr	DSELECT
+	lbsr	LOLIGHT
 
 	puls	a		Restore A
 	sta	CURBOX		Select new box
@@ -276,7 +273,7 @@ KYBDSYN	sync			Wait for next hsync clock...
 
 KYBDRLS	leas	1,s		Clean-up stack...
 	lda	CURBOX
-	lbsr	SELECT		Indicate key no longer pressed...
+	lbsr	LOLIGHT		Indicate key no longer pressed...
 
 	ldd	#MOVTIME	Reset move timeout counter
 	std	MOVTIMO
@@ -289,7 +286,7 @@ KYBDRLS	leas	1,s		Clean-up stack...
 	blt	KYBDCKX		Not done, continue checking...
 
 	lda	CURBOX		Deselect current box
-	lbsr	DSELECT
+	lbsr	LOLIGHT
 
 	lbsr	PAUSBTN		Pause after key press
 	lbra	GAMLOOP		Now, extend sequence and continue
@@ -312,7 +309,7 @@ NEXTCHK	dec	MOVTIMO+1	Check for timeout
 	bne	NXTCHK1
 
 	lda	CURBOX		Deselect current box
-	lbsr	DSELECT
+	lbsr	LOLIGHT
 
 	ldb	TONECHK		Get next in sequence
 	ldx	#TONESEQ
@@ -356,8 +353,8 @@ SEQLOOP	lda	,x+		Get next tone in sequence
 	lda	,s		Restore A from stack for input to TONEPLY
 	ldx	TONEDLY		Set tone duration
 	bsr	TONEPLY		Play it!
-	lda	,s		Restore A from stack for input to DSELECT
-	bsr	DSELECT		Un-highlight this color...
+	lda	,s		Restore A from stack for input to LOLIGHT
+	bsr	LOLIGHT		Un-highlight this color...
 	puls	a,x
 
 	dec	,s		Decrement remaining sequence length
@@ -448,25 +445,12 @@ PBTNLOP	sync			Wait for next hsync clock...
 	rts
 
 *
-* Outline selected box in white
-*
-*	A box to select, clobbered
-*	X gets clobbered
-*
-SELECT	ldx	#BXOUTLN
-	lsla
-	ldx	a,x
-	lda	#WHITE
-	bsr	DRWOUTL
-	rts
-
-*
 * Outline selected box in black
 *
 *	A box to deselect, clobbered
 *	X gets clobbered
 *
-DSELECT	ldx	#BXOUTLN
+LOLIGHT	ldx	#BXOUTLN
 	lsla
 	ldx	a,x
 	lda	#BLACK
@@ -615,8 +599,8 @@ GAMEWON	lda	CURBOX		Get current selection
 	lda	,s		Restore A from stack for input to TONEPLY
 	ldx	#WONDLY		Set tone duration (yes, WONDLY is intended)
 	lbsr	TONEPLY		Play it!
-	lda	,s		Restore A from stack for input to DSELECT
-	lbsr	DSELECT		Un-highlight this color...
+	lda	,s		Restore A from stack for input to LOLIGHT
+	lbsr	LOLIGHT		Un-highlight this color...
 	ldd	#WONDLY		Set time counter for pause
 	lbsr	PAUSPLY		Pause between tones...
 
@@ -628,8 +612,8 @@ GMWLOOP	lda	1,s		Restore A from stack for input to HILIGHT
 	lda	1,s		Restore A from stack for input to TONEPLY
 	ldx	#WONDUR		Set tone duration
 	lbsr	TONEPLY		Play it!
-	lda	1,s		Restore A from stack for input to DSELECT
-	lbsr	DSELECT		Un-highlight this color...
+	lda	1,s		Restore A from stack for input to LOLIGHT
+	lbsr	LOLIGHT		Un-highlight this color...
 	ldd	#WONDLY		Set time counter for pause
 	lbsr	PAUSPLY		Pause between tones...
 
@@ -731,7 +715,7 @@ GOBTCLR	lda	PIA0D0		Test the joystick button...
 	beq	GOBTCLR
 
 	lda	CURBOX		Deselect current box
-	lbsr	DSELECT
+	lbsr	LOLIGHT
 
 	leas	3,s		Clean-up the stack...
 	jmp	GAMATTR		Restart the game!
