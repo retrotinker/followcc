@@ -203,23 +203,23 @@ STRTNOW	ldy	#(VIDBASE+VIDSIZE/2-22)
 
 	ldy	#BXLOCAT	Label the keys that match the boxes
 	ldx	0,y
-	lda	#('W'-$40)
+	lda	#('I'-$40)
 	sta	,x
 
 	ldx	2,y
-	lda	#('E'-$40)
+	lda	#('O'-$40)
 	sta	11,x
 
 	ldx	4,y
 	leax	96,x
 	leax	64,x
-	lda	#('D'-$40)
+	lda	#('L'-$40)
 	sta	11,x
 
 	ldx	6,y
 	leax	96,x
 	leax	64,x
-	lda	#('S'-$40)
+	lda	#('K'-$40)
 	sta	,x
 
 GAMSTRT	lbsr	VARINIT
@@ -260,25 +260,25 @@ CTLLOOP	lbsr	NEXTCHK		Synchronize to sample frequency
 
 KYBDCHK	jsr	[$a000]
 	lbeq	KYBDCKX
-	cmpa	#'W'
+	cmpa	#'I'
 	bne	KYBDCK1
 
 	lda	#$00
 	bra	KYBDSEL
 
-KYBDCK1	cmpa	#'E'
+KYBDCK1	cmpa	#'O'
 	bne	KYBDCK2
 
 	lda	#$01
 	bra	KYBDSEL
 
-KYBDCK2	cmpa	#'D'
+KYBDCK2	cmpa	#'L'
 	bne	KYBDCK3
 
 	lda	#$02
 	bra	KYBDSEL
 
-KYBDCK3	cmpa	#'S'
+KYBDCK3	cmpa	#'K'
 	bne	KYBDCKX
 
 	lda	#$03
