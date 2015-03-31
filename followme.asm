@@ -212,44 +212,6 @@ GAMCONT	puls	a
 
 CTLLOOP	lbsr	NEXTCHK		Synchronize to sample frequency
 
-	lbsr	BTNREAD		Check for button press
-	tsta
-	bne	CTLSPIN		No button press, read the spinner
-
-	lda	TONECHK		Compare next tone in seq to current selection
-	ldx	#TONESEQ
-	ldb	CURBOX
-	cmpb	a,x
-	lbne	GAMEOVR		No match!  Game over...
-
-	lbsr	BTNPLAY		Otherwise, play tone for button
-
-	ldd	#MOVTIME	Reset move timeout counter
-	std	MOVTIMO
-
-	lda	TONECHK		Increment sequence check cursor
-	inca
-	sta	TONECHK
-
-	cmpa	TONELEN		Compare sequence check to sequence length
-	blt	CTLLOOP		Not done, continue checking...
-
-	lda	CURBOX		Deselect current box
-	lbsr	DSELECT
-
-	lbsr	PAUSBTN		Pause after button press
-	bra	GAMLOOP		Now, extend sequence and continue
-
-CTLSPIN	lbsr	SPNDBNC
-
-	lda	#MVCTMIN
-	cmpa	MOVCNTR
-	lbgt	LMOV_CW
-	lda	#MVCTMAX
-	cmpa	MOVCNTR
-	lble	LMOVCCW
-
-* Check for keyboard input -- last resort!!
 KYBDCHK	jsr	[$a000]
 	lbeq	KYBDCKX
 	cmpa	#'W'
@@ -334,185 +296,8 @@ KYBDRLS	leas	1,s		Clean-up stack...
 
 KYBDCKX	lda	#$ff
 	sta	PIA0D1
-	bra	CTLLPEX
 
-LMOV_CW	lda	CURBOX
-	lbsr	DSELECT
-	lda	CURBOX
-	inca
-	anda	#$03
-	sta	CURBOX
-	lbsr	SELECT
-
-	lda	#MVCINIT
-	sta	MOVCNTR
-
-	bra	CTLLPEX
-
-LMOVCCW	lda	CURBOX
-	lbsr	DSELECT
-	lda	CURBOX
-	deca
-	anda	#$03
-	sta	CURBOX
-	lbsr	SELECT
-
-	lda	#MVCINIT
-	sta	MOVCNTR
-
-*	bra	CTLLPEX
-
-CTLLPEX	lbra	CTLLOOP
-
-*
-* Test the button status and react to changes
-*
-*	X,A,B get clobbered
-*
-*	A cleared if button was pressed
-*
-BTNREAD	lda	PIA0D0		Test the joystick button...
-	bita	#$02
-	bne	BTNEXIT
-
-	lda	#MVCINIT	Reset movement counter
-	sta	MOVCNTR
-
-	lda	CURBOX		Select box to highlight...
-	lbsr	HILIGHT		Indicate button was pressed...
-
-	clra
-
-BTNEXIT	rts
-
-*
-* Play tone while button is pressed
-*
-*	X,A,B get clobbered
-*
-BTNPLAY	ldx	#BXDELAY	Set freq counter
-	lda	CURBOX
-	ldb	a,x
-	pshs	b
-
-BTPLSYN	sync			Wait for next hsync clock...
-	lda	PIA0D0		Clear hsync indicator...
-	decb			Decrement freq counter
-	bne	BTPLSYN
-
-BTNSND	lda	PIA1D1		Toggle square wave output...
-	eora	#SQWAVE
-	sta	PIA1D1
-
-	ldb	,s		Reset freq counter
-
-	lda	PIA0D0		Check for button release...
-	bita	#$02
-	beq	BTPLSYN
-
-	leas	1,s		Clean-up stack...
-	lda	CURBOX
-	lbsr	SELECT		Indicate button no longer pressed...
-
-	rts
-
-*
-* Debounce the spinner, accumulate left/right movement
-*
-*	Y,A,B get clobbered
-*
-SPNDBNC	ldd	SPNHIST		Shift historical spinner data
-	std	SPNHIST+1
-
-	bsr	SPNREAD		Read current spinner values
-	stb	SPNHIST
-	tfr	b,a
-
-	anda	SPNHIST+1	Computer AND terms of debounce algorithm
-	anda	SPNHIST+2
-	pshs	a
-
-	orb	SPNHIST+1	Computer OR terms of debounce algorithm
-	orb	SPNHIST+2
-	andb	SPNSTAT		AND the above w/ current reported value
-
-	orb	,s		Combine the debounce algorithm components
-	leas	1,s
-
-	lda	SPNSTAT		Read old spinner status
-	stb	SPNSTAT		Save new spinner status
-
-	lsla			Prepare vector by combining old and new status
-	lsla
-	ora	SPNSTAT
-	lsla
-	ldy	#SPNDBCK
-	jmp	a,y		Choose proper action for current state
-
-SPNDBCK	bra	SPNDBEX		00 -> 00 : No change, exit
-	bra	SPNM_CW		00 -> 01 : Record state change
-	bra	SPNMCCW		00 -> 10 : Record state change
-	bra	SPNDBAD		00 -> 11 : Invalid state change!
-	bra	SPNMCCW		01 -> 00 : Record state change
-	bra	SPNDBEX		01 -> 01 : No change, exit
-	bra	SPNDBAD		01 -> 10 : Invalid state change!
-	bra	SPNM_CW		01 -> 11 : Record state change
-	bra	SPNM_CW		10 -> 00 : Record state change
-	bra	SPNDBAD		10 -> 01 : Invalid state change!
-	bra	SPNDBEX		10 -> 10 : No change, exit
-	bra	SPNMCCW		10 -> 11 : Record state change
-	bra	SPNDBAD		11 -> 00 : Invalid state change!
-	bra	SPNMCCW		11 -> 01 : Record state change
-	bra	SPNM_CW		11 -> 10 : Record state change
-	bra	SPNDBEX		11 -> 11 : No change, exit
-
-SPNM_CW	dec	MOVCNTR
-	bra	SPNDBEX
-
-SPNMCCW	inc	MOVCNTR
-	bra	SPNDBEX
-
-SPNDBAD	equ	*
-SPNDBEX	rts
-
-*
-* Read the spinner
-*
-*	A gets clobbered
-*	B holds spinner state info
-*
-SPNREAD	clrb
-
-	lda	#$3c		Read the right/left axis of the left joystick
-	sta	PIA0C1
-	lda	#$35
-	sta	PIA0C0
-
-SPNRDP1	lda	#$7c		Test for low value on axis
-	sta	PIA1D0
-	lda	PIA0D0
-	bpl	SPNRDP2
-
-	orb	#SPINP1		Indicate "high" on phase 1 input
-
-SPNRDP2	lda	#$3d		Read the up/down axis of the left joystick
-	sta	PIA0C0
-	nop			Let the comparator stabilize (2x for hi-speed?)
-	nop
-	nop
-	nop
-	lda	PIA0D0		Test value still set in PIA1D0
-	bpl	SPNRDEX
-
-	orb	#SPINP2		Indicate "high" on phase 2 input
-
-SPNRDEX	clr	PIA1D0		Reset selector switch inputs
-	lda	#$35
-	sta	PIA0C0
-	lda	#$34
-	sta	PIA0C1
-
-	rts
+	jmp	CTLLOOP
 
 *
 * Wait for next hsync-clocked controller check term
@@ -954,18 +739,8 @@ GOBTCLR	lda	PIA0D0		Test the joystick button...
 *
 * Initialize game variables
 *
-VARINIT	clr	SPNSTAT		Init spinner control variables
-	clr	SPNHIST
-	clr	SPNHIST+1
-	clr	SPNHIST+2
-
-	lbsr	SPNREAD		Read current spinner values
-	stb	SPNSTAT		Pre-load spinner state
-
+VARINIT
 	clr	CURBOX		Init other variables
-	clr	BTNLAST
-	lda	#MVCINIT
-	sta	MOVCNTR
 	clr	TONELEN
 
 	ldd	#TONDLY1
@@ -1015,14 +790,7 @@ YUWNLEN	equ	(YUWNEND-YUWNSTR)
 	ifdef	ROM
 	org	DATA
 	endif
-SPNSTAT	rmb	1		Current spinner state value
-SPNHIST	rmb	3		Historical spinner readings
-
-BTNLAST	rmb	1		Previous button status
-
 CURBOX	rmb	1		Currently selected box
-
-MOVCNTR	rmb	1		Accumulated movement
 
 TONELEN	rmb	1		Length of tone sequence
 TONESEQ	rmb	32		Tone sequence data (TONECNT _must_ be next)
