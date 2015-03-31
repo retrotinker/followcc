@@ -169,28 +169,13 @@ GAMATTR	ldx	#SMSYSTR
 	clr	TONECNT
 
 * Wait for button press/release to start game
-STRTWAI	lda	PIA0D0		Test the joystick button...
-	bita	#$02
-	beq	STRTWA2		Wait for button release...
-
-	clr	PIA0D1		Check for key press
-	lda	PIA0D0
-	ldb	#$ff		Reset keyboard
-	stb	PIA0D1
-	anda	#$7f
-	cmpa	#$7f
-	bne	STRTNOW		Start the game
-
-	lda	TONECNT		Pre-seed TONECNT
+STRTWAI	lda	TONECNT		Pre-seed TONECNT
 	inca
 	anda	#$03
 	sta	TONECNT
 
-	bra	STRTWAI		Repeat the loop
-
-STRTWA2	lda	PIA0D0		Test the joystick button...
-	bita	#$02
-	beq	STRTWA2
+	jsr	[$a000]
+	beq	STRTWAI		Repeat the loop
 
 * Erase game start message
 STRTNOW	ldy	#(VIDBASE+VIDSIZE/2-22)
@@ -685,11 +670,7 @@ GMWLOOP	lda	1,s		Restore A from stack for input to HILIGHT
 	pshs	d
 	inc	,s		Offset MSB value for proper delay counting
 
-WINRWAI	lda	PIA0D0		Test the joystick button...
-	bita	#$02
-	beq	WINRWA2		Wait for button press...
-
-	sync			Wait for next hsync clock...
+WINRWAI	sync			Wait for next hsync clock...
 
 	lda	TONECNT		Not doing full re-init, so update TONECNT too
 	inca
@@ -709,11 +690,8 @@ WINRWAI	lda	PIA0D0		Test the joystick button...
 	std	,s
 	inc	,s		Offset MSB value for proper delay counting
 
-	bra	WINRWAI
-
-WINRWA2	lda	PIA0D0		Test the joystick button...
-	bita	#$02
-	beq	WINRWA2		Wait for button release...
+	jsr	[$a000]
+	beq	WINRWAI		Repeat the loop
 
 	ldy	#(VIDBASE+VIDSIZE/2-22)
 	lda	#SMSYLEN
@@ -759,11 +737,7 @@ GOVLOOP	decb			Decrement freq counter
 	ldb	2,s		Reset freq counter
 	bra	GOVPLAY
 
-GOBTCLR	lda	PIA0D0		Test the joystick button...
-	bita	#$02
-	beq	GOBTCLR
-
-	lda	CURBOX		Deselect current box
+GOBTCLR	lda	CURBOX		Deselect current box
 	lbsr	LOLIGHT
 
 	leas	3,s		Clean-up the stack...
