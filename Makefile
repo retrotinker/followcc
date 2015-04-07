@@ -2,8 +2,8 @@
 
 CFLAGS=-Wall
 
-TARGETS=followme.bin followme.s19 followme.wav followme.dsk followme.ccc
-EXTRA=followme.2k followme.4k followme.8k followme.16k followme.32k
+TARGETS=followcc.bin followcc.s19 followcc.wav followcc.dsk followcc.ccc
+EXTRA=followcc.2k followcc.4k followcc.8k followcc.16k followcc.32k
 
 all: $(TARGETS)
 
@@ -21,31 +21,31 @@ all: $(TARGETS)
 	cecb copy -2 -b -g $< \
 		$(@),$$(echo $< | cut -c1-8 | tr [:lower:] [:upper:])
 
-followme.dsk: followme.bin COPYING
+followcc.dsk: followcc.bin COPYING
 	rm -f $@
 	decb dskini $@
 	decb copy -2 -b $< $@,$$(echo $< | tr [:lower:] [:upper:])
 	decb copy -3 -a -l COPYING $@,COPYING
 
-followme.2k: followme.ccc
+followcc.2k: followcc.ccc
 	rm -f $@
 	dd if=/dev/zero bs=2k count=1 | \
 		tr '\000' '\377' > $@
 	dd if=$< of=$@ conv=notrunc
 
-followme.4k: followme.2k
+followcc.4k: followcc.2k
 	cat $< > $@
 	cat $< >> $@
 
-followme.8k: followme.4k
+followcc.8k: followcc.4k
 	cat $< > $@
 	cat $< >> $@
 
-followme.16k: followme.8k
+followcc.16k: followcc.8k
 	cat $< > $@
 	cat $< >> $@
 
-followme.32k: followme.16k
+followcc.32k: followcc.16k
 	cat $< > $@
 	cat $< >> $@
 

@@ -5,13 +5,13 @@
 \#*#
 
 # Build products
-followme.bin
-followme.s19
-followme.wav
-followme.dsk
-followme.ccc
-followme.2k
-followme.4k
-followme.8k
-followme.16k
-followme.32k
+*.bin
+*.s19
+*.wav
+*.dsk
+*.ccc
+*.2k
+*.4k
+*.8k
+*.16k
+*.32k
