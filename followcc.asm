@@ -15,7 +15,7 @@
 *
 
 	NAM	Follow Me
-	TTL	Simon-like game using a rotary controller
+	TTL	Simon-like game
 
 	ifdef	ROM
 LOAD	equ	$c000		Actual load address for binary
