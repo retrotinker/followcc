@@ -70,10 +70,17 @@ MOVTIME	equ	$2000
 	org	LOAD
 
 EXEC	equ	*
+
+	ifndef	ROM
+	sts	SAVSTK
+	endif
+
+	ifdef	ROM
 * Set direct page register
 	lda	#$ff
 	tfr	a,dp
 	setdp	$ff
+	endif
 
 * Disable IRQ and FIRQ
 	orcc	#$50
@@ -153,6 +160,10 @@ STRTWAI	lda	TONECNT		Pre-seed TONECNT
 
 	jsr	[$a000]
 	beq	STRTWAI		Repeat the loop
+	ifndef	ROM
+	cmpa	#$03
+	lbeq	EXIT
+	endif
 
 * Erase game start message
 STRTNOW	ldy	#(VIDBASE+VIDSIZE/2-22)
@@ -252,10 +263,21 @@ KYBDCK2	cmpa	#'L'
 	bra	KYBDSEL
 
 KYBDCK3	cmpa	#'K'
+	ifdef	ROM
 	bne	KYBDCKX
+	else
+	bne	KYBDCK4
+	endif
 
 	lda	#$03
-*	bra	KYBDSEL
+	ifndef	ROM
+	bra	KYBDSEL
+
+KYBDCK4	cmpa	#$03
+	bne	KYBDCKX
+
+	jmp	EXIT
+	endif
 
 KYBDSEL
 	pshs	a		LOLIGHT clobbers A
@@ -709,6 +731,10 @@ WINRWAI	lda	PIA0D0		Clear hsync indicator...
 
 	jsr	[$a000]
 	beq	WINRWAI		Repeat the loop
+	ifndef	ROM
+	cmpa	#$03
+	lbeq	EXIT
+	endif
 
 	ldy	#(VIDBASE+VIDSIZE/2-22)
 	lda	#SMSYLEN
@@ -840,6 +866,10 @@ TTLSCRN	jsr	CLRSCN
 	sta	TONECNT
 	jsr	[$a000]
 	beq	.1?
+	ifndef	ROM
+	cmpa	#$03
+	beq	EXIT
+	endif
 
 	lbsr	CLRSCN		Clear the screen
 
@@ -861,6 +891,27 @@ VARINIT	clr	CURBOX		Init other variables
 	std	MOVTIMO
 
 	rts
+
+	ifndef	ROM
+*
+* Exit the game
+*
+EXIT	lds	SAVSTK
+
+* Restore timing sources
+	lda	$ff01		Disable hsync interrupt generation
+	anda	#$fe
+	sta	$ff01
+	tst	$ff00
+
+	lda	$ff03		Enable vsync interrupt generation
+	ora	#$01
+	sta	$ff03
+
+	andcc	#$ef		Re-enable IRQ
+
+	rts
+	endif
 
 *
 * Constants
@@ -967,5 +1018,9 @@ TONEDLY	rmb	2		Delay time between tone playback
 MOVTIMO	rmb	2		Timeout counter for next move
 
 RONDNUM	rmb	1		Counter of current round
+
+	ifndef	ROM
+SAVSTK	rmb	2
+	endif
 
 	end	EXEC
