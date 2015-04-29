@@ -75,13 +75,6 @@ EXEC	equ	*
 	sts	SAVSTK
 	endif
 
-	ifdef	ROM
-* Set direct page register
-	lda	#$ff
-	tfr	a,dp
-	setdp	$ff
-	endif
-
 * Disable IRQ and FIRQ
 	orcc	#$50
 
